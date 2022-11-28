@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         不要到处coco
 // @namespace    https://wydevops.coding.net/
-// @version      0.4
+// @version      0.5
 // @description  不潮不用花钱
 // @author       你
 // @match        https://wydevops.coding.net/*
@@ -13,7 +13,7 @@
 // @license MIT
 // ==/UserScript==
 
-(function() {
+(function () {
   'use strict';
   console.log('注入成功')
   let script = document.createElement('link');
@@ -23,7 +23,7 @@
   document.documentElement.appendChild(script);
 
   const store = {
-    project: {}, iterationId: '', iteration: {}, personHoursMap: {}
+    project: {}, iterationId: '', iteration: {}, personHoursMap: {}, story: []
   }
 
   window.history.pushState = (fn => function pushState() {
@@ -79,7 +79,6 @@
   // })
 
 
-
   const getProjectId = async function (projectName) {
     // const data = new FormData()
     // Object.entries(courseData).forEach(([key, value]) => {
@@ -116,8 +115,9 @@
         dataType: "json",
         success: function ({data}) {
           console.log('getSubTree', data);
-          const personHoursMap = store.personHoursMap = {}
+          const personHoursMap = store.personHoursMap = {};
           data.list.forEach(item => {
+            item.$hours = item.subTasks.reduce((prev, curr, r) => prev + (curr.workingHours || 0), 0);
             item.subTasks.forEach(task => {
               const personName = task.assignee?.name ?? '未分配';
               const person = personHoursMap[personName] = personHoursMap[personName] || {
@@ -126,7 +126,8 @@
               person.tasks.push(task);
               person.workingHours += task.workingHours;
             })
-          })
+          });
+          store.story = data.list;
           console.log(store.personHoursMap)
           resolve(personHoursMap)
         },
@@ -214,6 +215,36 @@
       $(`#${ID_VALUE}`).tabs({
         collapsible: true
       });
+      const incept = debounce(() => {
+        store.story.forEach(item => {
+          const dom = $(`a[href^='/p/${store.project.name}/requirements/issues/${item.code}/detail']`);
+          // console.log(dom, item.$hours);
+          try {
+            const td = dom.parent().parent().parent().parent().children()[1];
+            td.style.position = 'relative';
+            $(td).append(`<div sp style='  position: absolute;
+                                      left: 32px;
+                                      bottom: -2px;
+                                      color: #ffa200;
+                                      font-weight: bold;'>${item.$hours}</div>`)
+          } catch (e) {
+          }
+          /*
+        dom.append(`<div sp style='  position: absolute;
+                                    left: auto;
+                                    bottom: 0;
+                                    color: #ffa200;
+                                    font-weight: bold;'>${item.$hours}</div>`) */
+        });
+      })
+
+      $('table').scroll(() => {
+        incept()
+      })
+      $('table').click(() => {
+        incept()
+      })
+      incept()
       // });
       // tableDom.parentNode.insertBefore(document.createElement('div'), tableDom)
     }, 200)
@@ -254,6 +285,18 @@
 
   function formatRate(number) {
     return (Number(number) * 100).toFixed(2) + '%'
+  }
+
+  function debounce(fn) {
+    let t = null
+    return function () {
+      if (t) {
+        clearTimeout(t)
+      }
+      t = setTimeout(() => {
+        fn.apply(this, arguments);
+      }, 200)
+    }
   }
 
   // Your code here...
