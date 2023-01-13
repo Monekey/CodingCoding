@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         不要到处coco
 // @namespace    https://wydevops.coding.net/
-// @version      0.5
+// @version      0.6
 // @description  不潮不用花钱
 // @author       你
 // @match        https://wydevops.coding.net/*
@@ -217,70 +217,103 @@
         const hoursRate = completedHours / subsHours;
         const deltaRate = hoursRate - iterationRate;
         div.innerHTML = `
-          <p>子工作项进度：<b>${completed.length}</b>/${subs.length}&nbsp;&nbsp;&nbsp;&nbsp;完成率：<b>${formatRate(completed.length / subs.length)}</b></p>
+          <p>
+          子工作项进度：<b>${completed.length}</b>/${subs.length}&nbsp;&nbsp;&nbsp;&nbsp;完成率：<b>${formatRate(completed.length / subs.length)}</b>
+          <button class="_week_report" style="margin-left: 12px" data-user="${item.person.id}">生成周报</button>
+          </p>
           <p>工时进度：
             <b>${reduceByProp(completed, 'workingHours')}</b>/${reduceByProp(subs, 'workingHours')}&nbsp;&nbsp;&nbsp;&nbsp;
             完成率：<b>${formatRate(reduceByProp(completed, 'workingHours') / reduceByProp(subs, 'workingHours'))}</b>&nbsp;&nbsp;&nbsp;&nbsp;
             <b style="color: ${deltaRate > 0 ? 'green' : 'red'}">${deltaRate > 0 ? '⬆' : '⬇'}</b>${formatRate(deltaRate)}（期望：${formatRate(iterationRate)}）
           </p>
-          <p><button class="_week_report" data-user="${item.person.id}">生成周报</button></p>
         `
         tabsWrapper.append(div)
         $(li).appendTo(ul);
       })
       $('div[class^="page-container-"]').parent().append(tabsWrapper)
       $('._week_report').click(async (event) => {
+        event.target.innerText = '请稍后';
+        event.target.disabled = 'disabled';
+        const userId = event.target.dataset.user;
         console.log(event.target.dataset.user, store.story);
-          let allSubTasks = [];
-          store.story.forEach(item => {
-              allSubTasks = [...allSubTasks, ...(item.subTasks.map(item1 => ({...item1, epic: item.epic || {code: 0, name: '无史诗'}, story: {code: item.code, name: item.name} })))]
-          })
-          console.log(allSubTasks);
-          const processingTasks = allSubTasks.filter(item => item.assignee.id == event.target.dataset.user).filter(item => item.issueStatus.type !== 'TODO');
-          const codes = processingTasks.map(item => item.code);
-          const weekly_tasks = [];
-          for(const code of codes){
-            const subTaskLogs = await subTaskDetail(code);
-            const _logs = subTaskLogs.filter(item => item.issueLog.target === 'STATUS')
-            const log = _logs[_logs.length - 1];
-            const time = new Date(log.createdAt)
-            if(isCurrentWeek(time)){
-               weekly_tasks.push(processingTasks.find(item => item.code === code))
-            }
-            console.log(code, time)
+        let allSubTasks = [];
+        store.story.forEach(item => {
+          allSubTasks = [...allSubTasks, ...(item.subTasks.map(item1 => ({
+            ...item1,
+            epic: item.epic || {code: 0, name: '无史诗'},
+            story: {code: item.code, name: item.name}
+          })))]
+        })
+        console.log(allSubTasks);
+        const processingTasks = allSubTasks.filter(item => item.assignee.id == userId).filter(item => item.issueStatus.type !== 'TODO');
+        const codes = processingTasks.map(item => item.code);
+        const weekly_tasks = [];
+        for (const code of codes) {
+          const subTaskLogs = await subTaskDetail(code);
+          const _logs = subTaskLogs.filter(item => item.issueLog.target === 'STATUS')
+          const log = _logs[_logs.length - 1];
+          const time = new Date(log.createdAt)
+          if (isCurrentWeek(time)) {
+            weekly_tasks.push(processingTasks.find(item => item.code === code))
           }
-          const epicMap = {};
-          weekly_tasks.forEach(item => {
-              epicMap[item.epic.code] = epicMap[item.epic.code] || [];
-              epicMap[item.epic.code].push(item)
-          })
-          const groupByEpic = Object.entries(epicMap).map(([epicCode, tasks]) => ({...tasks[0].epic, tasks}))
-          console.log(groupByEpic)
-          let text = ``;
-          groupByEpic.forEach((epic, index) => {
-              if(epic.code)
-                  text += `<b style="font-weight: bold;">${index + 1}、<a href="https://wydevops.coding.net/p/${store.project.name}/epics/issues/${epic.code}/detail">史诗 ${epic.code}</a> ${epic.name}</b>`
-              else
-                  text += `<b>${index + 1}、其他（无史诗）</b>`
-              text += `<ul>`
-              epic.tasks.forEach(task => {
-                  text += `<li>
+          console.log(code, time)
+        }
+        const epicMap = {};
+        weekly_tasks.forEach(item => {
+          epicMap[item.epic.code] = epicMap[item.epic.code] || [];
+          epicMap[item.epic.code].push(item)
+        })
+        const groupByEpic = Object.entries(epicMap).map(([epicCode, tasks]) => ({...tasks[0].epic, tasks}))
+        console.log(groupByEpic)
+        let text = ``;
+        for (let index in groupByEpic) {
+          const epic = groupByEpic[index];
+          if (epic.code) {
+            // 计算史诗进度 begin
+            const epicIssues = await fetchEpicIssues(epic.code);
+            const statData = {
+              total: 0,
+              curr: 0
+            }
+            for (const story of epicIssues) {
+              const ownerTasks = story.subTasks.filter(task => task.issueTypeDetail.name === '子工作项' && task.assignee?.id == userId);
+              console.log('ownerTasks:', ownerTasks)
+              for (const task of ownerTasks) {
+                const taskDetail = await fetchIssuesDetail(task.code);
+                statData.total += taskDetail.workingHours;
+                if (taskDetail.issueStatus.type === "COMPLETED") {
+                  statData.curr += taskDetail.workingHours;
+                }
+                console.log(taskDetail, statData.curr, statData.total)
+              }
+            }
+            // 计算史诗进度 end
+            text += `<b style="font-weight: bold;">${Number(index) + 1}、
+<a href="https://wydevops.coding.net/p/${store.project.name}/epics/issues/${epic.code}/detail">史诗 ${epic.code}</a> ${epic.name}
+ （${statData.curr} / ${statData.total}）${formatRate(statData.curr / statData.total)}</b>`
+          } else
+            text += `<b>${Number(index) + 1}、其他（无史诗）</b>`
+          text += `<ul>`
+          epic.tasks.forEach(task => {
+            text += `<li>
                   <a href="https://wydevops.coding.net/p/${store.project.name}/requirements/issues/${task.story.code}/detail" title="${task.story.name}">故事 ${task.story.code}</a>
                    / <a href="https://wydevops.coding.net/p/${store.project.name}/requirements/issues/${task.story.code}/detail/subissues/${task.code}">任务 ${task.code}</a>
-                  ：${task.name} <span style="color: red">—— ${task.issueStatus.name}</span>
+                  ：${task.name}（${task.workingHours}） <span style="color: red">—— ${task.issueStatus.name}</span>
                   </li>`
-              });
-              text += `</ul><br/>`;
-          })
-          const MIMETYPE = "text/html";
-
-          var data = [new ClipboardItem({ [MIMETYPE]: new Blob([text], { type: MIMETYPE }) })];
-          navigator.clipboard.write(data).then(function () {
-              alert("复制成功！去试试粘贴到Excel内吧～")
-          }, function () {
-              alert("不知道怎么回事，再试一次吧！")
-              console.error("Unable to write to clipboard. :-(");
           });
+          text += `</ul><br/>`;
+        }
+        event.target.innerText = '生成周报';
+        event.target.removeAttribute('disabled')
+        const MIMETYPE = "text/html";
+
+        const data = [new ClipboardItem({[MIMETYPE]: new Blob([text], {type: MIMETYPE})})];
+        navigator.clipboard.write(data).then(function () {
+          alert("复制成功！去试试粘贴到Excel内吧～")
+        }, function () {
+          alert("不知道怎么回事，再试一次吧！")
+          console.error("Unable to write to clipboard. :-(");
+        });
 
       })
       // const img = document.createElement('img');
@@ -360,7 +393,17 @@
   }
 
   function formatRate(number) {
-    return (Number(number) * 100).toFixed(2) + '%'
+    let ico;
+    if (number >= 1)
+      ico = '🌕'
+    else if (number >= 0.75)
+      ico = '🌔'
+    else if (number >= 0.5)
+      ico = '🌓'
+    else if (number > 0)
+      ico = '🌒'
+    else ico = '🌑'
+    return ico + (Number(number) * 100).toFixed(2) + '%'
   }
 
   function debounce(fn) {
@@ -377,18 +420,70 @@
 
   // Your code here...
 
-    function isCurrentWeek(past) {
-        const pastTime = new Date(past).getTime()
-        const today = new Date(new Date().toLocaleDateString())
-        let day = today.getDay()
-        day = day == 0 ? 7 : day
-        const oneDayTime = 60*60*24*1000
-        const monday = new Date(today.getTime() - (oneDayTime * (day - 1)))
-        const nextMonday = new Date(today.getTime() + (oneDayTime * (8 - day)))
-        if(monday.getTime() <= pastTime && nextMonday.getTime() > pastTime) {
-            return true
-        } else {
-            return false
-        }
+  function isCurrentWeek(past) {
+    const pastTime = new Date(past).getTime()
+    const today = new Date(new Date().toLocaleDateString())
+    let day = today.getDay()
+    day = day == 0 ? 7 : day
+    const oneDayTime = 60 * 60 * 24 * 1000
+    const monday = new Date(today.getTime() - (oneDayTime * (day - 1)))
+    const nextMonday = new Date(today.getTime() + (oneDayTime * (8 - day)))
+    if (monday.getTime() <= pastTime && nextMonday.getTime() > pastTime) {
+      return true
+    } else {
+      return false
     }
+  }
+
+  /**
+   * 史诗下所有事项（故事 + 子任务）
+   * @param epicCode
+   * @returns {Promise<unknown>}
+   */
+  function fetchEpicIssues(epicCode) {
+    const url = `https://wydevops.coding.net/api/project/${store.project.id}/issues/epics/${epicCode}/issues`;
+    return new Promise((resolve, reject) => {
+      $.ajax({
+        url: url,
+        data: {},
+        type: "get",
+        contentType: "application/x-www-form-urlencoded; charset=UTF-8",
+        dataType: "json",
+        success: function ({data}) {
+          //console.log(data)
+          resolve(data)
+        },
+        error: function (XMLHttpRequest, textStatus, errorThrown) {
+          console.error(arguments)
+          reject(errorThrown)
+        }
+      });
+    })
+  }
+
+  /**
+   * 事项详情
+   * @param code
+   * @returns {Promise<unknown>}
+   */
+  function fetchIssuesDetail(code) {
+    const url = `https://wydevops.coding.net/api/project/${store.project.id}/issues/${code}?withDescriptionMarkup=false`;
+    return new Promise((resolve, reject) => {
+      $.ajax({
+        url: url,
+        data: {},
+        type: "get",
+        contentType: "application/x-www-form-urlencoded; charset=UTF-8",
+        dataType: "json",
+        success: function ({data}) {
+          //console.log(data)
+          resolve(data)
+        },
+        error: function (XMLHttpRequest, textStatus, errorThrown) {
+          console.error(arguments)
+          reject(errorThrown)
+        }
+      });
+    })
+  }
 })();
