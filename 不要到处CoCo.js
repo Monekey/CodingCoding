@@ -220,6 +220,7 @@
           <p>
           子工作项进度：<b>${completed.length}</b>/${subs.length}&nbsp;&nbsp;&nbsp;&nbsp;完成率：<b>${formatRate(completed.length / subs.length)}</b>
           <button class="_week_report" style="margin-left: 12px" data-user="${item.person.id}">生成周报</button>
+          <button class="_all_report" style="margin-left: 12px" data-user="${item.person.id}">生成迭代报告</button>
           </p>
           <p>工时进度：
             <b>${reduceByProp(completed, 'workingHours')}</b>/${reduceByProp(subs, 'workingHours')}&nbsp;&nbsp;&nbsp;&nbsp;
@@ -231,91 +232,8 @@
         $(li).appendTo(ul);
       })
       $('div[class^="page-container-"]').parent().append(tabsWrapper)
-      $('._week_report').click(async (event) => {
-        event.target.innerText = '请稍后';
-        event.target.disabled = 'disabled';
-        const userId = event.target.dataset.user;
-        console.log(event.target.dataset.user, store.story);
-        let allSubTasks = [];
-        store.story.forEach(item => {
-          allSubTasks = [...allSubTasks, ...(item.subTasks.map(item1 => ({
-            ...item1,
-            epic: item.epic || {code: 0, name: '无史诗'},
-            story: {code: item.code, name: item.name}
-          })))]
-        })
-        console.log(allSubTasks);
-        const processingTasks = allSubTasks.filter(item => item.assignee.id == userId).filter(item => item.issueStatus.type !== 'TODO');
-        const codes = processingTasks.map(item => item.code);
-        const weekly_tasks = [];
-        for (const code of codes) {
-          const subTaskLogs = await subTaskDetail(code);
-          const _logs = subTaskLogs.filter(item => item.issueLog.target === 'STATUS')
-          const log = _logs[_logs.length - 1];
-          const time = new Date(log.createdAt)
-          if (isCurrentWeek(time)) {
-            weekly_tasks.push(processingTasks.find(item => item.code === code))
-          }
-          console.log(code, time)
-        }
-        const epicMap = {};
-        weekly_tasks.forEach(item => {
-          epicMap[item.epic.code] = epicMap[item.epic.code] || [];
-          epicMap[item.epic.code].push(item)
-        })
-        const groupByEpic = Object.entries(epicMap).map(([epicCode, tasks]) => ({...tasks[0].epic, tasks}))
-        console.log(groupByEpic)
-        let text = ``;
-        for (let index in groupByEpic) {
-          const epic = groupByEpic[index];
-          if (epic.code) {
-            // 计算史诗进度 begin
-            const epicIssues = await fetchEpicIssues(epic.code);
-            const statData = {
-              total: 0,
-              curr: 0
-            }
-            for (const story of epicIssues) {
-              const ownerTasks = story.subTasks.filter(task => task.issueTypeDetail.name === '子工作项' && task.assignee?.id == userId);
-              console.log('ownerTasks:', ownerTasks)
-              for (const task of ownerTasks) {
-                const taskDetail = await fetchIssuesDetail(task.code);
-                statData.total += taskDetail.workingHours;
-                if (taskDetail.issueStatus.type === "COMPLETED") {
-                  statData.curr += taskDetail.workingHours;
-                }
-                console.log(taskDetail, statData.curr, statData.total)
-              }
-            }
-            // 计算史诗进度 end
-            text += `<b style="font-weight: bold;">${Number(index) + 1}、
-<a href="https://wydevops.coding.net/p/${store.project.name}/epics/issues/${epic.code}/detail">史诗 ${epic.code}</a> ${epic.name}
- （${statData.curr} / ${statData.total}）${formatRate(statData.curr / statData.total)}</b>`
-          } else
-            text += `<b>${Number(index) + 1}、其他（无史诗）</b>`
-          text += `<ul>`
-          epic.tasks.forEach(task => {
-            text += `<li>
-                  <a href="https://wydevops.coding.net/p/${store.project.name}/requirements/issues/${task.story.code}/detail" title="${task.story.name}">故事 ${task.story.code}</a>
-                   / <a href="https://wydevops.coding.net/p/${store.project.name}/requirements/issues/${task.story.code}/detail/subissues/${task.code}">任务 ${task.code}</a>
-                  ：${task.name}（${task.workingHours}） <span style="color: red">—— ${task.issueStatus.name}</span>
-                  </li>`
-          });
-          text += `</ul><br/>`;
-        }
-        event.target.innerText = '生成周报';
-        event.target.removeAttribute('disabled')
-        const MIMETYPE = "text/html";
-
-        const data = [new ClipboardItem({[MIMETYPE]: new Blob([text], {type: MIMETYPE})})];
-        navigator.clipboard.write(data).then(function () {
-          alert("复制成功！去试试粘贴到Excel内吧～")
-        }, function () {
-          alert("不知道怎么回事，再试一次吧！")
-          console.error("Unable to write to clipboard. :-(");
-        });
-
-      })
+      $('._week_report').click(async (event) => report_by_time()(event))
+      $('._all_report').click(async (event) => report_by_time('all')(event))
       // const img = document.createElement('img');
       // img.src = `https://vkceyugu.cdn.bspapp.com/VKCEYUGU-3ca7fba5-3cfa-402c-aaec-2b3e431e262d/226c3600-5069-429d-95be-79bce56a1796.png`;
       // tabsWrapper.append(img)
@@ -485,5 +403,98 @@
         }
       });
     })
+  }
+
+  function report_by_time(type = 'week') {
+    return async function(event) {
+      event.target.innerText = '请稍后';
+      event.target.disabled = 'disabled';
+      const userId = event.target.dataset.user;
+      console.log(event.target.dataset.user, store.story);
+      let allSubTasks = [];
+      store.story.forEach(item => {
+        allSubTasks = [...allSubTasks, ...(item.subTasks.map(item1 => ({
+          ...item1,
+          epic: item.epic || {code: 0, name: '无史诗'},
+          story: {code: item.code, name: item.name}
+        })))]
+      })
+      console.log(allSubTasks);
+      let processingTasks = allSubTasks.filter(item => item.assignee.id == userId);
+      if(type === 'week')  processingTasks = processingTasks.filter(item => item.issueStatus.type !== 'TODO')
+      const codes = processingTasks.map(item => item.code);
+      const weekly_tasks = [];
+      for (const code of codes) {
+        const subTaskLogs = await subTaskDetail(code);
+        const _logs = subTaskLogs.filter(item => item.issueLog.target === 'STATUS')
+        const log = _logs[_logs.length - 1];
+
+        if(type === 'week'){
+          const time = new Date(log.createdAt)
+          if (isCurrentWeek(time)) {
+            weekly_tasks.push(processingTasks.find(item => item.code === code))
+          }
+        }else {
+          weekly_tasks.push(processingTasks.find(item => item.code === code))
+        }
+      }
+      const epicMap = {};
+      weekly_tasks.forEach(item => {
+        epicMap[item.epic.code] = epicMap[item.epic.code] || [];
+        epicMap[item.epic.code].push(item)
+      })
+      const groupByEpic = Object.entries(epicMap).map(([epicCode, tasks]) => ({...tasks[0].epic, tasks}))
+      console.log(groupByEpic)
+      let text = ``;
+      for (let index in groupByEpic) {
+        const epic = groupByEpic[index];
+        if (epic.code) {
+          // 计算史诗进度 begin
+          const epicIssues = await fetchEpicIssues(epic.code);
+          const statData = {
+            total: 0,
+            curr: 0
+          }
+          for (const story of epicIssues) {
+            const ownerTasks = story.subTasks.filter(task => task.issueTypeDetail.name === '子工作项' && task.assignee?.id == userId);
+            console.log('ownerTasks:', ownerTasks)
+            for (const task of ownerTasks) {
+              const taskDetail = await fetchIssuesDetail(task.code);
+              statData.total += taskDetail.workingHours;
+              if (taskDetail.issueStatus.type === "COMPLETED") {
+                statData.curr += taskDetail.workingHours;
+              }
+              console.log(taskDetail, statData.curr, statData.total)
+            }
+          }
+          // 计算史诗进度 end
+          text += `<b style="font-weight: bold;">${Number(index) + 1}、
+<a href="https://wydevops.coding.net/p/${store.project.name}/epics/issues/${epic.code}/detail">史诗 ${epic.code}</a> ${epic.name}
+ （${statData.curr} / ${statData.total}）${formatRate(statData.curr / statData.total)}</b>`
+        } else
+          text += `<b>${Number(index) + 1}、其他（无史诗）</b>`
+        text += `<ul>`
+        epic.tasks.forEach(task => {
+          text += `<li>
+                  <a href="https://wydevops.coding.net/p/${store.project.name}/requirements/issues/${task.story.code}/detail" title="${task.story.name}">故事 ${task.story.code}</a>
+                   / <a href="https://wydevops.coding.net/p/${store.project.name}/requirements/issues/${task.story.code}/detail/subissues/${task.code}">任务 ${task.code}</a>
+                  ：${task.name}（${task.workingHours}） <span style="color: red">—— ${task.issueStatus.name}</span>
+                  </li>`
+        });
+        text += `</ul><br/>`;
+      }
+      event.target.innerText = type === 'week' ? '生成周报': '生成迭代报告';
+      event.target.removeAttribute('disabled')
+      const MIMETYPE = "text/html";
+
+      const data = [new ClipboardItem({[MIMETYPE]: new Blob([text], {type: MIMETYPE})})];
+      navigator.clipboard.write(data).then(function () {
+        alert("复制成功！去试试粘贴到Excel内吧～")
+      }, function () {
+        alert("不知道怎么回事，再试一次吧！")
+        console.error("Unable to write to clipboard. :-(");
+      });
+
+    }
   }
 })();
