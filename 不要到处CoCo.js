@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         不要到处coco
 // @namespace    https://wydevops.coding.net/
-// @version      0.7
+// @version      0.8
 // @description  不潮不用花钱
 // @author       你
 // @match        https://wydevops.coding.net/*
@@ -216,11 +216,12 @@
         const subsHours = reduceByProp(subs, 'workingHours');
         const hoursRate = completedHours / subsHours;
         const deltaRate = hoursRate - iterationRate;
-        div.innerHTML = `
+        let innerHTML = `
           <p>
-          子工作项进度：<b>${completed.length}</b>/${subs.length}&nbsp;&nbsp;&nbsp;&nbsp;完成率：<b>${formatRate(completed.length / subs.length)}</b>
-          <button class="_week_report" style="margin-left: 12px" data-user="${item.person.id}">生成周报</button>
-          <button class="_all_report" style="margin-left: 12px" data-user="${item.person.id}">生成迭代报告</button>
+          子工作项进度：<b>${completed.length}</b>/${subs.length}&nbsp;&nbsp;&nbsp;&nbsp;完成率：<b>${formatRate(completed.length / subs.length)}</b>`;
+        item.person && (innerHTML += `<button class="_week_report" style="margin-left: 12px" data-user="${item.person.id}">生成周报</button>
+          <button class="_all_report" style="margin-left: 12px" data-user="${item.person.id}">生成迭代报告</button>`)
+        innerHTML += `
           </p>
           <p>工时进度：
             <b>${reduceByProp(completed, 'workingHours')}</b>/${reduceByProp(subs, 'workingHours')}&nbsp;&nbsp;&nbsp;&nbsp;
@@ -228,6 +229,7 @@
             <b style="color: ${deltaRate > 0 ? 'green' : 'red'}">${deltaRate > 0 ? '⬆' : '⬇'}</b>${formatRate(deltaRate)}（期望：${formatRate(iterationRate)}）
           </p>
         `
+        div.innerHTML = innerHTML;
         tabsWrapper.append(div)
         $(li).appendTo(ul);
       })
@@ -406,7 +408,7 @@
   }
 
   function report_by_time(type = 'week') {
-    return async function(event) {
+    return async function (event) {
       event.target.innerText = '请稍后';
       event.target.disabled = 'disabled';
       const userId = event.target.dataset.user;
@@ -421,7 +423,7 @@
       })
       console.log(allSubTasks);
       let processingTasks = allSubTasks.filter(item => item.assignee.id == userId);
-      if(type === 'week')  processingTasks = processingTasks.filter(item => item.issueStatus.type !== 'TODO')
+      if (type === 'week') processingTasks = processingTasks.filter(item => item.issueStatus.type !== 'TODO')
       const codes = processingTasks.map(item => item.code);
       const weekly_tasks = [];
       for (const code of codes) {
@@ -429,12 +431,12 @@
         const _logs = subTaskLogs.filter(item => item.issueLog.target === 'STATUS')
         const log = _logs[_logs.length - 1];
 
-        if(type === 'week'){
+        if (type === 'week') {
           const time = new Date(log.createdAt)
           if (isCurrentWeek(time)) {
             weekly_tasks.push(processingTasks.find(item => item.code === code))
           }
-        }else {
+        } else {
           weekly_tasks.push(processingTasks.find(item => item.code === code))
         }
       }
@@ -483,7 +485,7 @@
         });
         text += `</ul><br/>`;
       }
-      event.target.innerText = type === 'week' ? '生成周报': '生成迭代报告';
+      event.target.innerText = type === 'week' ? '生成周报' : '生成迭代报告';
       event.target.removeAttribute('disabled')
       const MIMETYPE = "text/html";
 
