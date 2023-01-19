@@ -422,7 +422,7 @@
         })))]
       })
       console.log(allSubTasks);
-      let processingTasks = allSubTasks.filter(item => item.assignee.id == userId);
+      let processingTasks = allSubTasks.filter(item => item.assignee && (item.assignee.id == userId));
       if (type === 'week') processingTasks = processingTasks.filter(item => item.issueStatus.type !== 'TODO')
       const codes = processingTasks.map(item => item.code);
       const weekly_tasks = [];
