@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         不要到处coco
 // @namespace    https://wydevops.coding.net/
-// @version      0.8
+// @version      0.9
 // @description  不潮不用花钱
 // @author       你
 // @match        https://wydevops.coding.net/*
