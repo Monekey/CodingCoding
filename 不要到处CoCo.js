@@ -1,8 +1,8 @@
 // ==UserScript==
 // @name         不要到处coco
 // @namespace    https://wydevops.coding.net/
-// @version      0.9
-// @description  不潮不用花钱
+// @version      0.91
+// @description  Coding增强
 // @author       你
 // @match        https://wydevops.coding.net/*
 // @require      http://code.jquery.com/jquery-2.1.1.min.js
@@ -292,7 +292,9 @@
       //   Object.entries(style).forEach(([name, value]) => el.style[name] = value)
       // })
       const el = $('a[class^="enterprise-trigger-logo-"] > img')[0];
-      el.src = `https://vkceyugu.cdn.bspapp.com/VKCEYUGU-3ca7fba5-3cfa-402c-aaec-2b3e431e262d/226c3600-5069-429d-95be-79bce56a1796.png`;
+      if (store.project && store.project.name === "ziyoumokuaiyouhua") {
+        el.src = `https://vkceyugu.cdn.bspapp.com/VKCEYUGU-3ca7fba5-3cfa-402c-aaec-2b3e431e262d/226c3600-5069-429d-95be-79bce56a1796.png`;
+      }
       const style = {
         animationName: 'loadingCircle',
         animationDuration: '1s',
