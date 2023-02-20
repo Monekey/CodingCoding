@@ -1,8 +1,8 @@
 // ==UserScript==
 // @name         不要到处coco
 // @namespace    https://wydevops.coding.net/
-// @version      0.91
-// @description  Coding增强
+// @version      1.0
+// @description  coding增强
 // @author       你
 // @match        https://wydevops.coding.net/*
 // @require      http://code.jquery.com/jquery-2.1.1.min.js
@@ -61,13 +61,36 @@
       await getSubTree();
 
       render()
+    } else {
+      if ($(`#${ID_VALUE}`) && $(`#${ID_VALUE}`).length) {
+        console.log(666)
+        $('table').scroll(() => {
+          incept()
+        })
+        $('table').click(() => {
+          incept()
+        })
+        incept()
+      } else {
+        render();
+      }
+
     }
+  }
+
+  async function rerender() {
+    $(`#${ID_VALUE}`).remove()
+    store.iterationId = iterationId;
+    await getIteration();
+    await getSubTree();
+
+    render();
   }
 
   setInterval(() => {
     main();
     hackLiYang();
-  }, 500)
+  }, 1000)
 
   window.addEventListener('locationchange', main)
 
@@ -182,21 +205,48 @@
     })
   }
 
+  const incept = debounce(() => {
+    store.story.forEach(item => {
+      const dom = $(`a[href^='/p/${store.project.name}/requirements/issues/${item.code}/detail']`);
+      // console.log(dom, item.$hours);
+      try {
+        const td = dom.parent().parent().parent().parent().children()[1];
+        td.style.position = 'relative';
+        $(td).append(`<div sp style='position: absolute;
+                                      left: 32px;
+                                      bottom: -2px;
+                                      color: #ffa200;
+                                      font-weight: bold;'>${item.$hours}</div>`)
+      } catch (e) {
+      }
+      /*
+    dom.append(`<div sp style='  position: absolute;
+                                left: auto;
+                                bottom: 0;
+                                color: #ffa200;
+                                font-weight: bold;'>${item.$hours}</div>`) */
+    });
+  })
+  let interval = null;
 
   function render() {
     window.$ = $
+    interval && clearInterval(interval)
     const iterationRate = Number(((1 - store.iteration.remainingDays / ((store.iteration.endAt - store.iteration.startAt) / 3600 / 24 / 1000))).toFixed(2));
-    const interval = setInterval(() => {
+    interval = setInterval(() => {
       // 渲染
       const tableDom = $('table');
       if (!tableDom.length) {
         return
       }
-      clearInterval(interval)
+      interval && clearInterval(interval)
       console.log(tableDom)
       const tabsWrapper = document.createElement('div');
       tabsWrapper.id = ID_VALUE;
       const ul = document.createElement('ul');
+      if ($(`#${ID_VALUE}`) && $(`#${ID_VALUE}`).length) {
+        $(`#${ID_VALUE}`).remove()
+      }
       $(ul).appendTo(tabsWrapper)
       Object.entries(store.personHoursMap).sort((a, b) => b[1].workingHours - a[1].workingHours).forEach(([personName, item], index) => {
         const li = document.createElement('li');
@@ -244,40 +294,11 @@
       $(`#${ID_VALUE}`).tabs({
         collapsible: true
       });
-      const incept = debounce(() => {
-        store.story.forEach(item => {
-          const dom = $(`a[href^='/p/${store.project.name}/requirements/issues/${item.code}/detail']`);
-          // console.log(dom, item.$hours);
-          try {
-            const td = dom.parent().parent().parent().parent().children()[1];
-            td.style.position = 'relative';
-            $(td).append(`<div sp style='  position: absolute;
-                                      left: 32px;
-                                      bottom: -2px;
-                                      color: #ffa200;
-                                      font-weight: bold;'>${item.$hours}</div>`)
-          } catch (e) {
-          }
-          /*
-        dom.append(`<div sp style='  position: absolute;
-                                    left: auto;
-                                    bottom: 0;
-                                    color: #ffa200;
-                                    font-weight: bold;'>${item.$hours}</div>`) */
-        });
-      })
-
-      $('table').scroll(() => {
-        incept()
-      })
-      $('table').click(() => {
-        incept()
-      })
-      incept()
       // });
       // tableDom.parentNode.insertBefore(document.createElement('div'), tableDom)
     }, 200)
   }
+
 
   function hackLiYang() {
     try {
