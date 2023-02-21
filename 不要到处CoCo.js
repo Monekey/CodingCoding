@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         不要到处coco
 // @namespace    https://wydevops.coding.net/
-// @version      1.0
+// @version      1.0.1
 // @description  coding增强
 // @author       你
 // @match        https://wydevops.coding.net/*
@@ -140,6 +140,9 @@
           console.log('getSubTree', data);
           const personHoursMap = store.personHoursMap = {};
           data.list.forEach(item => {
+            if(item.subTasks.length === 0){
+              item.subTasks = item.subIssues.filter(it => it.type === "SUB_TASK")
+            }
             item.$hours = item.subTasks.reduce((prev, curr, r) => prev + (curr.workingHours || 0), 0);
             item.subTasks.forEach(task => {
               const personName = task.assignee?.name ?? '未分配';
