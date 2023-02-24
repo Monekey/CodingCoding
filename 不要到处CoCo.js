@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         不要到处coco
 // @namespace    https://wydevops.coding.net/
-// @version      1.0.3
+// @version      1.0.4
 // @description  coding增强
 // @author       你
 // @match        https://wydevops.coding.net/*
@@ -535,7 +535,7 @@
   function fiberMatch(number) {
     if (!number) return 0;
     const _number = number / 8;
-    return FiberList.find(item => _number < item);
+    return FiberList.find(item => _number <= item);
   }
 
   // 设置故事点
