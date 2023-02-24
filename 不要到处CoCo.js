@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         不要到处coco
 // @namespace    https://wydevops.coding.net/
-// @version      1.0.2
+// @version      1.0.3
 // @description  coding增强
 // @author       你
 // @match        https://wydevops.coding.net/*
@@ -63,7 +63,7 @@
       render()
     } else {
       if ($(`#${ID_VALUE}`) && $(`#${ID_VALUE}`).length) {
-        console.log(666)
+        /// console.log(666)
         $('table').scroll(() => {
           incept()
         })
@@ -247,7 +247,7 @@
       }
       interval && clearInterval(interval)
       console.log(tableDom)
-      tableDom.prepend(`<button class="new-button-1kWt8bSwah default-14YlfkOcgs h-32-1KvNA1yjmi">一键更新故事点</button>`)
+      // tableDom.prepend(`<button class="new-button-1kWt8bSwah default-14YlfkOcgs h-32-1KvNA1yjmi">一键更新故事点</button>`)
       const tabsWrapper = document.createElement('div');
       tabsWrapper.id = ID_VALUE;
       const ul = document.createElement('ul');
