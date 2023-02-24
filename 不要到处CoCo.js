@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         不要到处coco
 // @namespace    https://wydevops.coding.net/
-// @version      1.0.1
+// @version      1.0.2
 // @description  coding增强
 // @author       你
 // @match        https://wydevops.coding.net/*
@@ -140,7 +140,7 @@
           console.log('getSubTree', data);
           const personHoursMap = store.personHoursMap = {};
           data.list.forEach(item => {
-            if(item.subTasks.length === 0){
+            if (item.subTasks.length === 0) {
               item.subTasks = item.subIssues.filter(it => it.type === "SUB_TASK")
             }
             item.$hours = item.subTasks.reduce((prev, curr, r) => prev + (curr.workingHours || 0), 0);
@@ -214,12 +214,15 @@
       // console.log(dom, item.$hours);
       try {
         const td = dom.parent().parent().parent().parent().children()[1];
+        if ($(td).find('div.spspspspsp').length) return;
         td.style.position = 'relative';
-        $(td).append(`<div sp style='position: absolute;
+        // `<div class="tag-OnRxknb07m epic-1Eg_rPGjj7"><div class="icon-24obWj6mLq"></div><div class="detail-hc4p8Zzxbo">【保洁】【保洁-0324】新增</div></div>`
+        $(td).prepend(`<div sp class="spspspspsp tag-OnRxknb07m epic-1Eg_rPGjj7"><div class="icon-24obWj6mLq"></div><div class="detail-hc4p8Zzxbo">${`${item.$hours}`.slice(0, 5)}/<span style="color: #ffa200">${fiberMatch(item.$hours)}</span></div></div>`)
+        /*$(td).append(`<div sp style='position: absolute; font-size: 12px;
                                       left: 32px;
                                       bottom: -2px;
-                                      color: #ffa200;
-                                      font-weight: bold;'>${item.$hours}</div>`)
+                                      color: #222;
+                                      font-weight: bold;'>${item.$hours}/<span style="color: #ffa200">${fiberMatch(item.$hours)}</span></div>`)*/
       } catch (e) {
       }
       /*
@@ -244,6 +247,7 @@
       }
       interval && clearInterval(interval)
       console.log(tableDom)
+      tableDom.prepend(`<button class="new-button-1kWt8bSwah default-14YlfkOcgs h-32-1KvNA1yjmi">一键更新故事点</button>`)
       const tabsWrapper = document.createElement('div');
       tabsWrapper.id = ID_VALUE;
       const ul = document.createElement('ul');
@@ -272,8 +276,8 @@
         let innerHTML = `
           <p>
           子工作项进度：<b>${completed.length}</b>/${subs.length}&nbsp;&nbsp;&nbsp;&nbsp;完成率：<b>${formatRate(completed.length / subs.length)}</b>`;
-        item.person && (innerHTML += `<button class="_week_report" style="margin-left: 12px" data-user="${item.person.id}">生成周报</button>
-          <button class="_all_report" style="margin-left: 12px" data-user="${item.person.id}">生成迭代报告</button>`)
+        item.person && (innerHTML += `<button class="_week_report new-button-1kWt8bSwah default-14YlfkOcgs h-32-1KvNA1yjmi" style="margin-left: 12px" data-user="${item.person.id}">生成周报</button>
+          <button class="_all_report new-button-1kWt8bSwah default-14YlfkOcgs h-32-1KvNA1yjmi" style="margin-left: 12px" data-user="${item.person.id}">生成迭代报告</button>`)
         innerHTML += `
           </p>
           <p>工时进度：
@@ -316,9 +320,9 @@
       //   Object.entries(style).forEach(([name, value]) => el.style[name] = value)
       // })
       const el = $('a[class^="enterprise-trigger-logo-"] > img')[0];
-      if (store.project && store.project.name === "ziyoumokuaiyouhua") {
-        el.src = `https://vkceyugu.cdn.bspapp.com/VKCEYUGU-3ca7fba5-3cfa-402c-aaec-2b3e431e262d/226c3600-5069-429d-95be-79bce56a1796.png`;
-      }
+      //if (store.project && store.project.name === "ziyoumokuaiyouhua") {
+      //el.src = `https://vkceyugu.cdn.bspapp.com/VKCEYUGU-3ca7fba5-3cfa-402c-aaec-2b3e431e262d/226c3600-5069-429d-95be-79bce56a1796.png`;
+      //}
       const style = {
         animationName: 'loadingCircle',
         animationDuration: '1s',
@@ -524,5 +528,34 @@
       });
 
     }
+  }
+
+  const FiberList = [0, 0.5, 1, 2, 3, 5, 8, 13, 20, 40]
+
+  function fiberMatch(number) {
+    if (!number) return 0;
+    const _number = number / 8;
+    return FiberList.find(item => _number < item);
+  }
+
+  // 设置故事点
+  async function setStoryPoint(story, point) {
+    return new Promise((resolve, reject) => {
+      $.ajax({
+        url: `https://wydevops.coding.net/api/project/${store.project.id}/issues/requirements/${story}/fields`,
+        data: {storyPoint: point},
+        type: "PATCH",
+        contentType: "application/x-www-form-urlencoded; charset=UTF-8",
+        dataType: "json",
+        success: function ({data}) {
+          console.log(data)
+          resolve()
+        },
+        error: function (XMLHttpRequest, textStatus, errorThrown) {
+          console.error(arguments)
+          reject(errorThrown)
+        }
+      });
+    })
   }
 })();
