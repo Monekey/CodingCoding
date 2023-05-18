@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         不要到处coco
 // @namespace    https://wydevops.coding.net/
-// @version      1.0.4
+// @version      1.1.0
 // @description  coding增强
 // @author       你
 // @match        https://wydevops.coding.net/*
@@ -15,7 +15,28 @@
 
 (function () {
   'use strict';
-  console.log('注入成功')
+  console.log('注入成功', window.fetch);
+
+  let showParentIssues = true;
+  const _fetch = window.fetch;
+  window.fetch = function() {
+    const url = arguments[0];
+    if(showParentIssues && url.includes('subtask-tree')){
+      console.log('我是拦截器(o^^o)', arguments);
+      const modifiedUrl = replaceQueryParam(url, 'showParentIssues', 'true');
+      console.log(modifiedUrl);
+      arguments[0] = modifiedUrl;
+    }
+
+    return _fetch.apply(this, arguments)
+  }
+
+  function replaceQueryParam(url, paramName, paramValue) {
+    const regex = new RegExp(`(${encodeURIComponent(paramName)}=)[^&]+`);
+    return url.replace(regex, `$1${encodeURIComponent(paramValue)}`);
+  }
+
+
   let script = document.createElement('link');
   script.setAttribute('rel', 'stylesheet');
   script.setAttribute('type', 'text/css');
@@ -26,6 +47,7 @@
     project: {}, iterationId: '', iteration: {}, personHoursMap: {}, story: []
   }
 
+  /*
   window.history.pushState = (fn => function pushState() {
     var ret = fn.apply(this, arguments)
     console.log('pushState')
@@ -45,6 +67,7 @@
   window.addEventListener('popstate', () => {
     window.dispatchEvent(new Event('locationchange'))
   })
+  */
   const ID_VALUE = 'coco-tabs';
   const main = async () => {
     if (!/^\/p(.+)\//.test(location.pathname)) return;
@@ -131,7 +154,7 @@
   const getSubTree = async function () {
     return new Promise((resolve, reject) => {
       $.ajax({
-        url: `https://wydevops.coding.net/api/project/${store.project.id}/iterations/${store.iterationId}/issues/subtask-tree?keywords=&sortBy=ISSUE_ITERATION_SORT%3AASC&showSubIssues=false&page=1&pageSize=500`,
+        url: `https://wydevops.coding.net/api/project/${store.project.id}/iterations/${store.iterationId}/issues/subtask-tree?keywords=&sortBy=ISSUE_ITERATION_SORT%3AASC&showParentIssues=true&page=1&pageSize=500`,
         data: {},
         type: "get",
         contentType: "application/x-www-form-urlencoded; charset=UTF-8",
@@ -209,6 +232,29 @@
   }
 
   const incept = debounce(() => {
+    try {
+      if(!$('#_on_off').length) {
+        const filterBarDom = $('div[class^="filter-bar-section-"]');
+        //console.log('filterBarDom', filterBarDom);
+        $(filterBarDom[0]).append($(`<button id="_on_off" style="width: 40px;height: 24px;color: rgb(25, 128, 97);background-color: rgb(195, 243, 203);margin: 2px 16px 10px 10px;border: none;font-weight: bold;border-radius: 3px;cursor: pointer;
+" onclick="_on_off_toggle(this)">ON</button>`));
+        window._on_off_toggle = function(button) {
+          if (button.innerHTML === 'ON') {
+            showParentIssues = false;
+            button.innerHTML = 'OFF';
+            button.style.backgroundColor = '#f24c3d';
+            button.style.color = '#fff';
+          } else {
+            button.innerHTML = 'ON';
+            button.style.backgroundColor = '#c3f3cb';
+            button.style.color = '#198061';
+            showParentIssues = true;
+          }
+        }
+      }
+
+    }
+    catch{}
     store.story.forEach(item => {
       const dom = $(`a[href^='/p/${store.project.name}/requirements/issues/${item.code}/detail']`);
       // console.log(dom, item.$hours);
@@ -458,7 +504,7 @@
       const weekly_tasks = [];
       for (const code of codes) {
         const subTaskLogs = await subTaskDetail(code);
-        const _logs = subTaskLogs.filter(item => item.issueLog.target === 'STATUS')
+        const _logs = subTaskLogs.filter(item => item.issueLog && item.issueLog.target === 'STATUS')
         const log = _logs[_logs.length - 1];
 
         if (type === 'week') {
