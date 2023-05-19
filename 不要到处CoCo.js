@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         不要到处coco
 // @namespace    https://wydevops.coding.net/
-// @version      1.1.0
+// @version      1.2.0
 // @description  coding增强
 // @author       你
 // @match        https://wydevops.coding.net/*
@@ -19,9 +19,9 @@
 
   let showParentIssues = true;
   const _fetch = window.fetch;
-  window.fetch = function() {
+  window.fetch = function () {
     const url = arguments[0];
-    if(showParentIssues && url.includes('subtask-tree')){
+    if (showParentIssues && url.includes('subtask-tree')) {
       console.log('我是拦截器(o^^o)', arguments);
       const modifiedUrl = replaceQueryParam(url, 'showParentIssues', 'true');
       console.log(modifiedUrl);
@@ -44,37 +44,43 @@
   document.documentElement.appendChild(script);
 
   const store = {
+    projectList: [],
     project: {}, iterationId: '', iteration: {}, personHoursMap: {}, story: []
   }
 
   /*
-  window.history.pushState = (fn => function pushState() {
-    var ret = fn.apply(this, arguments)
-    console.log('pushState')
-    window.dispatchEvent(new Event('pushstate'))
-    window.dispatchEvent(new Event('locationchange'))
-    return ret
-  })(window.history.pushState)
+window.history.pushState = (fn => function pushState() {
+  var ret = fn.apply(this, arguments)
+  console.log('pushState')
+  window.dispatchEvent(new Event('pushstate'))
+  window.dispatchEvent(new Event('locationchange'))
+  return ret
+})(window.history.pushState)
 
-  window.history.replaceState = (fn => function replaceState() {
-    console.log('replaceState')
-    var ret = fn.apply(this, arguments)
-    window.dispatchEvent(new Event('replacestate'))
-    window.dispatchEvent(new Event('locationchange'))
-    return ret
-  })(window.history.replaceState)
+window.history.replaceState = (fn => function replaceState() {
+  console.log('replaceState')
+  var ret = fn.apply(this, arguments)
+  window.dispatchEvent(new Event('replacestate'))
+  window.dispatchEvent(new Event('locationchange'))
+  return ret
+})(window.history.replaceState)
 
-  window.addEventListener('popstate', () => {
-    window.dispatchEvent(new Event('locationchange'))
-  })
-  */
+window.addEventListener('popstate', () => {
+  window.dispatchEvent(new Event('locationchange'))
+})
+*/
   const ID_VALUE = 'coco-tabs';
   const main = async () => {
     if (!/^\/p(.+)\//.test(location.pathname)) return;
 
     const projectName = /^\/p\/(.+?)\//.exec(location.pathname)[1];
     if (store.project.name !== projectName) {
-      await getProjectId(projectName)
+      await getProjectId(projectName);
+      await getMyProjectList();
+      for (const datum of store.projectList) {
+        await getIterationsList(datum)
+      }
+      console.log('projectList:', store.projectList);
     }
     const iterationId = new RegExp(`^\/p\/${projectName}\/iterations\/(.+?)\/`).exec(location.pathname)[1];
     if (store.iterationId !== iterationId) {
@@ -152,33 +158,48 @@
   }
 
   const getSubTree = async function () {
+    const projectId = store.project.id;
+    const iterationId = store.iterationId;
+    const currDataList = await getSubTreeSingle(projectId, iterationId);
+    store.personHoursMap = _subTreeToMap(currDataList);
+    Object.entries(store.personHoursMap).forEach(([name, item]) => {
+      item.addition = [];
+    })
+    store.story = currDataList;
+    console.log(store.iteration);
+    const checker = new RegExp(`${store.iteration.name.slice(-6)}$`); //xxxxx23-5-1
+    for (const project of store.projectList) {
+      if (project.id === store.project.id) continue;
+      const iteration = project.$iterations.find(item => checker.test(item.name));
+      if (iteration) {
+        const list = await getSubTreeSingle(project.id, iteration.code);
+        const _map = _subTreeToMap(list);
+        // console.log(_map);
+        Object.entries(store.personHoursMap).forEach(([name, item]) => {
+          const item0 = _map[name];
+          if (!item0) return;
+          item0.iteration = iteration;
+          item.addition.push(item0);
+        })
+      }
+    }
+    console.log(store.personHoursMap);
+  }
+
+  const getSubTreeSingle = async function (projectId, iterationId) {
     return new Promise((resolve, reject) => {
       $.ajax({
-        url: `https://wydevops.coding.net/api/project/${store.project.id}/iterations/${store.iterationId}/issues/subtask-tree?keywords=&sortBy=ISSUE_ITERATION_SORT%3AASC&showParentIssues=true&page=1&pageSize=500`,
+        url: `https://wydevops.coding.net/api/project/${projectId}/iterations/${iterationId}/issues/subtask-tree?keywords=&sortBy=ISSUE_ITERATION_SORT%3AASC&showParentIssues=true&page=1&pageSize=500`,
         data: {},
         type: "get",
         contentType: "application/x-www-form-urlencoded; charset=UTF-8",
         dataType: "json",
-        success: function ({data}) {
-          console.log('getSubTree', data);
-          const personHoursMap = store.personHoursMap = {};
-          data.list.forEach(item => {
-            if (item.subTasks.length === 0) {
-              item.subTasks = item.subIssues.filter(it => it.type === "SUB_TASK")
-            }
-            item.$hours = item.subTasks.reduce((prev, curr, r) => prev + (curr.workingHours || 0), 0);
-            item.subTasks.forEach(task => {
-              const personName = task.assignee?.name ?? '未分配';
-              const person = personHoursMap[personName] = personHoursMap[personName] || {
-                tasks: [], workingHours: 0, person: task.assignee
-              };
-              person.tasks.push(task);
-              person.workingHours += task.workingHours;
-            })
-          });
-          store.story = data.list;
-          console.log(store.personHoursMap)
-          resolve(personHoursMap)
+        success: function ({data, iteration_not_exist}) {
+          if (iteration_not_exist) {
+            console.error(iteration_not_exist);
+            return resolve([])
+          }
+          resolve(data ? (data.list || []) : [])
         },
         error: function (XMLHttpRequest, textStatus, errorThrown) {
           console.error(arguments)
@@ -187,6 +208,31 @@
         }
       });
     })
+  }
+
+  function _subTreeToMap(list) {
+    const personHoursMap = {};
+    list.forEach(item => {
+      if (item.subTasks.length === 0) {
+        item.subTasks = item.subIssues.filter(it => it.type === "SUB_TASK")
+      }
+      item.$hours = item.subTasks.reduce((prev, curr, r) => prev + (curr.workingHours || 0), 0);
+      item.subTasks.forEach(task => {
+        const personName = task.assignee?.name ?? '未分配';
+        const person = personHoursMap[personName] = personHoursMap[personName] || {
+          tasks: [], workingHours: 0, person: task.assignee
+        };
+        person.tasks.push(task);
+        person.workingHours += task.workingHours;
+      })
+    });
+    return personHoursMap;
+  }
+
+  function _getAdditionWorkHours(additionList) {
+    return additionList.reduce((pre, curr) => {
+      return pre + (curr.workingHours || 0)
+    }, 0)
   }
 
   async function getIteration() {
@@ -233,12 +279,12 @@
 
   const incept = debounce(() => {
     try {
-      if(!$('#_on_off').length) {
+      if (!$('#_on_off').length) {
         const filterBarDom = $('div[class^="filter-bar-section-"]');
         //console.log('filterBarDom', filterBarDom);
         $(filterBarDom[0]).append($(`<button id="_on_off" style="width: 40px;height: 24px;color: rgb(25, 128, 97);background-color: rgb(195, 243, 203);margin: 2px 16px 10px 10px;border: none;font-weight: bold;border-radius: 3px;cursor: pointer;
 " onclick="_on_off_toggle(this)">ON</button>`));
-        window._on_off_toggle = function(button) {
+        window._on_off_toggle = function (button) {
           if (button.innerHTML === 'ON') {
             showParentIssues = false;
             button.innerHTML = 'OFF';
@@ -253,8 +299,8 @@
         }
       }
 
+    } catch {
     }
-    catch{}
     store.story.forEach(item => {
       const dom = $(`a[href^='/p/${store.project.name}/requirements/issues/${item.code}/detail']`);
       // console.log(dom, item.$hours);
@@ -265,18 +311,18 @@
         // `<div class="tag-OnRxknb07m epic-1Eg_rPGjj7"><div class="icon-24obWj6mLq"></div><div class="detail-hc4p8Zzxbo">【保洁】【保洁-0324】新增</div></div>`
         $(td).prepend(`<div sp class="spspspspsp tag-OnRxknb07m epic-1Eg_rPGjj7"><div class="icon-24obWj6mLq"></div><div class="detail-hc4p8Zzxbo">${`${item.$hours}`.slice(0, 5)}/<span style="color: #ffa200">${fiberMatch(item.$hours)}</span></div></div>`)
         /*$(td).append(`<div sp style='position: absolute; font-size: 12px;
-                                      left: 32px;
-                                      bottom: -2px;
-                                      color: #222;
-                                      font-weight: bold;'>${item.$hours}/<span style="color: #ffa200">${fiberMatch(item.$hours)}</span></div>`)*/
+                              left: 32px;
+                              bottom: -2px;
+                              color: #222;
+                              font-weight: bold;'>${item.$hours}/<span style="color: #ffa200">${fiberMatch(item.$hours)}</span></div>`)*/
       } catch (e) {
       }
       /*
-    dom.append(`<div sp style='  position: absolute;
-                                left: auto;
-                                bottom: 0;
-                                color: #ffa200;
-                                font-weight: bold;'>${item.$hours}</div>`) */
+dom.append(`<div sp style='  position: absolute;
+                          left: auto;
+                          bottom: 0;
+                          color: #ffa200;
+                          font-weight: bold;'>${item.$hours}</div>`) */
     });
   })
   let interval = null;
@@ -304,8 +350,10 @@
       Object.entries(store.personHoursMap).sort((a, b) => b[1].workingHours - a[1].workingHours).forEach(([personName, item], index) => {
         const li = document.createElement('li');
         const a = document.createElement('a');
-        a.href = `#${ID_VALUE}-${index + 1}`
-        a.innerText = `${personName}(${item.workingHours})`;
+        a.href = `#${ID_VALUE}-${index + 1}`;
+        const additionHours = reduceByProp(item.addition, 'workingHours');
+        const additionText = additionHours ? ` + <span style="color: firebrick">${additionHours}</span>` : ''
+        a.innerHTML = `${personName}(${item.workingHours}${additionText})`;
         if (!item.person) {
           a.style.color = 'red'
         }
@@ -319,7 +367,21 @@
         const subsHours = reduceByProp(subs, 'workingHours');
         const hoursRate = completedHours / subsHours;
         const deltaRate = hoursRate - iterationRate;
+
+        const additionLines = item.addition.map(item => {
+          const subs = item.tasks.filter(item => item.issueTypeDetail.name === '子工作项');
+          const completed = subs.filter(item => item.issueStatus.name === '已完成');
+          return `
+            <p>
+             <b style="color: firebrick">${item.iteration.name}：</b>
+             <b>${reduceByProp(completed, 'workingHours')}</b>/${reduceByProp(subs, 'workingHours')}&nbsp;&nbsp;&nbsp;&nbsp;
+             完成率：<b>${formatRate(reduceByProp(completed, 'workingHours') / reduceByProp(subs, 'workingHours'))}</b>&nbsp;&nbsp;&nbsp;&nbsp;
+            </p>
+          `
+        }).join('');
+
         let innerHTML = `
+            ${additionLines}
           <p>
           子工作项进度：<b>${completed.length}</b>/${subs.length}&nbsp;&nbsp;&nbsp;&nbsp;完成率：<b>${formatRate(completed.length / subs.length)}</b>`;
         item.person && (innerHTML += `<button class="_week_report new-button-1kWt8bSwah default-14YlfkOcgs h-32-1KvNA1yjmi" style="margin-left: 12px" data-user="${item.person.id}">生成周报</button>
@@ -604,4 +666,47 @@
       });
     })
   }
+
+  async function getMyProjectList() {
+    return new Promise((resolve, reject) => {
+      $.ajax({
+        url: `https://wydevops.coding.net/api/platform/project/recent/views/search?pmType=PROJECT&keyWord=`,
+        data: {},
+        type: "GET",
+        contentType: "application/x-www-form-urlencoded; charset=UTF-8",
+        dataType: "json",
+        success: function ({data}) {
+          store.projectList = data;
+          resolve()
+        },
+        error: function (XMLHttpRequest, textStatus, errorThrown) {
+          console.error(arguments)
+          reject(errorThrown)
+        }
+      });
+    })
+  }
+
+  async function getIterationsList(project) {
+    return new Promise((resolve, reject) => {
+      $.ajax({
+        url: `https://wydevops.coding.net/api/project/${project.id}/iterations?page=1&pageSize=100&keywords=&status=WAIT_PROCESS&status=PROCESSING&startDate=&endDate=&sortBy=CODE%3ADESC`,
+        data: {},
+        type: "GET",
+        contentType: "application/x-www-form-urlencoded; charset=UTF-8",
+        dataType: "json",
+        success: function ({data}) {
+          console.log('$iterations:', data);
+          project.$iterations = data.list;
+          resolve()
+        },
+        error: function (XMLHttpRequest, textStatus, errorThrown) {
+          console.error(arguments)
+          reject(errorThrown)
+        }
+      });
+    })
+  }
+
+
 })();
