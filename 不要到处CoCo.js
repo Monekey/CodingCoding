@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         不要到处coco
 // @namespace    https://wydevops.coding.net/
-// @version      1.2.0
+// @version      1.2.1
 // @description  coding增强
 // @author       你
 // @match        https://wydevops.coding.net/*
@@ -167,10 +167,12 @@ window.addEventListener('popstate', () => {
     })
     store.story = currDataList;
     console.log(store.iteration);
-    const checker = new RegExp(`${store.iteration.name.slice(-6)}$`); //xxxxx23-5-1
+    const checker = function (iteration) {
+      return Math.abs((iteration.startAt - store.iteration.startAt) / (24 * 60 * 60 * 1000)) < 6
+    }
     for (const project of store.projectList) {
       if (project.id === store.project.id) continue;
-      const iteration = project.$iterations.find(item => checker.test(item.name));
+      const iteration = project.$iterations.find(item => checker(item));
       if (iteration) {
         const list = await getSubTreeSingle(project.id, iteration.code);
         const _map = _subTreeToMap(list);
