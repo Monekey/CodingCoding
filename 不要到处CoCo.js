@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         不要到处coco
 // @namespace    https://wydevops.coding.net/
-// @version      1.2.2
+// @version      1.2.3
 // @description  coding增强
 // @author       你
 // @match        https://wydevops.coding.net/*
@@ -439,6 +439,8 @@ dom.append(`<div sp style='  position: absolute;
              <b style="color: firebrick">${item.iteration.name}：</b>
              <b>${Utils.reduceByProp(completed, 'workingHours')}</b>/${Utils.reduceByProp(subs, 'workingHours')}&nbsp;&nbsp;&nbsp;&nbsp;
              完成率：<b>${Utils.formatRate(Utils.reduceByProp(completed, 'workingHours') / Utils.reduceByProp(subs, 'workingHours'))}</b>&nbsp;&nbsp;&nbsp;&nbsp;
+             <b style="color: ${deltaRate > 0 ? 'green' : 'red'}">${deltaRate > 0 ? '⬆' : '⬇'}</b>${Utils.formatRate(deltaRate)}（期望：${Utils.formatRate(iterationRate)}）
+             子工作项进度：<b>${completed.length}</b>/${subs.length}&nbsp;&nbsp;&nbsp;&nbsp;完成率：<b>${Utils.formatRate(completed.length / subs.length)}</b>
             </p>
           `
         }).join('');
