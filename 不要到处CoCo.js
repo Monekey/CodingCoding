@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         不要到处coco
 // @namespace    https://wydevops.coding.net/
-// @version      1.2.1
+// @version      1.2.2
 // @description  coding增强
 // @author       你
 // @match        https://wydevops.coding.net/*
@@ -19,6 +19,7 @@
 
   // 工具方法
   const Utils = {
+    // arr数组使用prop属性求和
     reduceByProp(arr, prop) {
       return arr.reduce((total, curr) => {
         return total += (curr[prop] || 0)
@@ -89,6 +90,55 @@
   script.setAttribute('type', 'text/css');
   script.href = "https://code.jquery.com/ui/1.13.2/themes/base/jquery-ui.css";
   document.documentElement.appendChild(script);
+
+  const style = document.createElement('style');
+  style.innerHTML = `
+  .coco-info-icon {
+    width: 13px;
+    height: 13px;
+    background: url(data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMTYiIGhlaWdodD0iMTYiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+PHBhdGggZD0iTTEyIDFhMyAzIDAgMDEzIDN2OGEzIDMgMCAwMS0zIDNINGEzIDMgMCAwMS0zLTNWNGEzIDMgMCAwMTMtM2g4ek05IDdIN3Y1aDJWN3pNOCA0Yy0uNiAwLTEgLjQtMSAxcy40IDEgMSAxIDEtLjQgMS0xLS40LTEtMS0xeiIgZmlsbD0iIzIwMkQ0MCIgZmlsbC1ydWxlPSJldmVub2RkIi8+PC9zdmc+) 50% no-repeat;
+    background-size: cover;
+    opacity: 1;
+    margin-left: 4px;
+    cursor: pointer;
+    filter: brightness(10);
+  }
+  .coco-additions-wrapper {
+    background: #b222221a;
+    padding: 8px;
+    border-radius: 4px;
+    border-top-left-radius: 0;
+  }
+  .coco-additions-wrapper > p:last-child {
+    margin-bottom: 0;
+  }
+  header.coco-additions-tag {
+    display: inline-flex !important;
+    font-size: 12px;
+    background: firebrick;
+    color: white;
+    font-weight: bold;
+    padding: 3px 5px 2px 4px;
+    border-top-left-radius: 4px;
+    border-top-right-radius: 4px;
+  }
+  .coco-tooltip {
+    position:absolute;
+    border:1px solid #333;
+    background:#f7f5d1;
+    padding:1px;
+    color:#333;
+    display:none;
+  }
+  .coco-addition-hours {
+    font-weight: bold;
+    color: firebrick
+  }
+  .ui-tabs-active.ui-state-active .coco-addition-hours {
+    color: #ffa2a2;
+  }
+  `
+  document.head.appendChild(style)
 
   const store = {
     projectList: [],
@@ -365,7 +415,7 @@ dom.append(`<div sp style='  position: absolute;
         const a = document.createElement('a');
         a.href = `#${ID_VALUE}-${index + 1}`;
         const additionHours = Utils.reduceByProp(item.addition, 'workingHours');
-        const additionText = additionHours ? ` + <span style="color: firebrick">${additionHours}</span>` : ''
+        const additionText = additionHours ? ` + <span class="coco-addition-hours">${additionHours}</span>` : ''
         a.innerHTML = `${personName}(${item.workingHours}${additionText})`;
         if (!item.person) {
           a.style.color = 'red'
@@ -381,7 +431,7 @@ dom.append(`<div sp style='  position: absolute;
         const hoursRate = completedHours / subsHours;
         const deltaRate = hoursRate - iterationRate;
 
-        const additionLines = item.addition.map(item => {
+        let additionLines = item.addition.map(item => {
           const subs = item.tasks.filter(item => item.issueTypeDetail.name === '子工作项');
           const completed = subs.filter(item => item.issueStatus.name === '已完成');
           return `
@@ -392,21 +442,26 @@ dom.append(`<div sp style='  position: absolute;
             </p>
           `
         }).join('');
+        if (additionLines) {
+          additionLines = `
+            <header class="coco-additions-tag">共享资源任务工时统计<div class="coco-info-icon"></div></header>
+            <div class="coco-additions-wrapper">
+                ${additionLines}
+            </div>
+          `
+        }
 
         let innerHTML = `
-            ${additionLines}
-          <p>
-          子工作项进度：<b>${completed.length}</b>/${subs.length}&nbsp;&nbsp;&nbsp;&nbsp;完成率：<b>${Utils.formatRate(completed.length / subs.length)}</b>`;
-        item.person && (innerHTML += `<button class="_week_report new-button-1kWt8bSwah default-14YlfkOcgs h-32-1KvNA1yjmi" style="margin-left: 12px" data-user="${item.person.id}">生成周报</button>
-          <button class="_all_report new-button-1kWt8bSwah default-14YlfkOcgs h-32-1KvNA1yjmi" style="margin-left: 12px" data-user="${item.person.id}">生成迭代报告</button>`)
-        innerHTML += `
-          </p>
-          <p>工时进度：
+          <p style="margin-bottom: 4px;"><b>${store.iteration.name}：</b>
             <b>${Utils.reduceByProp(completed, 'workingHours')}</b>/${Utils.reduceByProp(subs, 'workingHours')}&nbsp;&nbsp;&nbsp;&nbsp;
             完成率：<b>${Utils.formatRate(Utils.reduceByProp(completed, 'workingHours') / Utils.reduceByProp(subs, 'workingHours'))}</b>&nbsp;&nbsp;&nbsp;&nbsp;
             <b style="color: ${deltaRate > 0 ? 'green' : 'red'}">${deltaRate > 0 ? '⬆' : '⬇'}</b>${Utils.formatRate(deltaRate)}（期望：${Utils.formatRate(iterationRate)}）
+           子工作项进度：<b>${completed.length}</b>/${subs.length}&nbsp;&nbsp;&nbsp;&nbsp;完成率：<b>${Utils.formatRate(completed.length / subs.length)}</b>
+            ${item.person ? `<button class="_week_report new-button-1kWt8bSwah default-14YlfkOcgs h-32-1KvNA1yjmi" style="margin-left: 12px;height: 24px;" data-user="${item.person.id}">生成周报</button>
+          <button class="_all_report new-button-1kWt8bSwah default-14YlfkOcgs h-32-1KvNA1yjmi" style="margin-left: 12px;height: 24px;" data-user="${item.person.id}">生成迭代报告</button>` : ''}
           </p>
-        `
+            ${additionLines}
+        `;
         div.innerHTML = innerHTML;
         tabsWrapper.append(div)
         $(li).appendTo(ul);
@@ -421,6 +476,31 @@ dom.append(`<div sp style='  position: absolute;
       // $(function () {
       $(`#${ID_VALUE}`).tabs({
         collapsible: true
+      });
+      var x = 15;
+      var y = -40;
+      $(".coco-info-icon").mouseover(function (e) {
+        this.myTitle = `
+<div>1.使用者需拥有共享成员所在项目的权限</div>
+<div>2.共享成员的多个冲刺的时间差不高于7天</div>
+        `;
+        this.title = "";
+        var tooltip = "<div class='coco-tooltip'>" + this.myTitle + "</div>"; //创建 div 元素
+        $("body").append(tooltip);	//把它追加到文档中
+        $(".coco-tooltip")
+          .css({
+            "top": (e.pageY + y) + "px",
+            "left": (e.pageX + x) + "px"
+          }).show("fast");	  //设置x坐标和y坐标，并且显示
+      }).mouseout(function () {
+        this.title = this.myTitle;
+        $(".coco-tooltip").remove();   //移除
+      }).mousemove(function (e) {
+        $(".coco-tooltip")
+          .css({
+            "top": (e.pageY + y) + "px",
+            "left": (e.pageX + x) + "px"
+          }).show("fast");
       });
       // });
       // tableDom.parentNode.insertBefore(document.createElement('div'), tableDom)
