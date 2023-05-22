@@ -17,6 +17,53 @@
   'use strict';
   console.log('注入成功', window.fetch);
 
+  // 工具方法
+  const Utils = {
+    reduceByProp(arr, prop) {
+      return arr.reduce((total, curr) => {
+        return total += (curr[prop] || 0)
+      }, 0)
+    },
+    formatRate(number) {
+      let ico;
+      if (number >= 1)
+        ico = '🌕'
+      else if (number >= 0.75)
+        ico = '🌔'
+      else if (number >= 0.5)
+        ico = '🌓'
+      else if (number > 0)
+        ico = '🌒'
+      else ico = '🌑'
+      return ico + (Number(number) * 100).toFixed(2) + '%'
+    },
+    debounce(fn) {
+      let t = null
+      return function () {
+        if (t) {
+          clearTimeout(t)
+        }
+        t = setTimeout(() => {
+          fn.apply(this, arguments);
+        }, 200)
+      }
+    },
+    isCurrentWeek(past) {
+      const pastTime = new Date(past).getTime()
+      const today = new Date(new Date().toLocaleDateString())
+      let day = today.getDay()
+      day = day == 0 ? 7 : day
+      const oneDayTime = 60 * 60 * 24 * 1000
+      const monday = new Date(today.getTime() - (oneDayTime * (day - 1)))
+      const nextMonday = new Date(today.getTime() + (oneDayTime * (8 - day)))
+      if (monday.getTime() <= pastTime && nextMonday.getTime() > pastTime) {
+        return true
+      } else {
+        return false
+      }
+    }
+  }
+
   let showParentIssues = true;
   const _fetch = window.fetch;
   window.fetch = function () {
@@ -48,27 +95,6 @@
     project: {}, iterationId: '', iteration: {}, personHoursMap: {}, story: []
   }
 
-  /*
-window.history.pushState = (fn => function pushState() {
-  var ret = fn.apply(this, arguments)
-  console.log('pushState')
-  window.dispatchEvent(new Event('pushstate'))
-  window.dispatchEvent(new Event('locationchange'))
-  return ret
-})(window.history.pushState)
-
-window.history.replaceState = (fn => function replaceState() {
-  console.log('replaceState')
-  var ret = fn.apply(this, arguments)
-  window.dispatchEvent(new Event('replacestate'))
-  window.dispatchEvent(new Event('locationchange'))
-  return ret
-})(window.history.replaceState)
-
-window.addEventListener('popstate', () => {
-  window.dispatchEvent(new Event('locationchange'))
-})
-*/
   const ID_VALUE = 'coco-tabs';
   const main = async () => {
     if (!/^\/p(.+)\//.test(location.pathname)) return;
@@ -124,18 +150,9 @@ window.addEventListener('popstate', () => {
   window.addEventListener('locationchange', main)
 
   window.onload = main
-  // chrome.runtime.sendMessage({
-  //   TYPE: 'main'
-  // }, (response) => {
-  //   console.log(response)
-  // })
 
 
   const getProjectId = async function (projectName) {
-    // const data = new FormData()
-    // Object.entries(courseData).forEach(([key, value]) => {
-    //   data.append(key, String(value))
-    // })
     return new Promise((resolve, reject) => {
       $.ajax({
         url: `https://wydevops.coding.net/api/platform/project/${projectName}`,
@@ -231,12 +248,6 @@ window.addEventListener('popstate', () => {
     return personHoursMap;
   }
 
-  function _getAdditionWorkHours(additionList) {
-    return additionList.reduce((pre, curr) => {
-      return pre + (curr.workingHours || 0)
-    }, 0)
-  }
-
   async function getIteration() {
     return new Promise((resolve, reject) => {
       $.ajax({
@@ -279,7 +290,7 @@ window.addEventListener('popstate', () => {
     })
   }
 
-  const incept = debounce(() => {
+  const incept = Utils.debounce(() => {
     try {
       if (!$('#_on_off').length) {
         const filterBarDom = $('div[class^="filter-bar-section-"]');
@@ -353,7 +364,7 @@ dom.append(`<div sp style='  position: absolute;
         const li = document.createElement('li');
         const a = document.createElement('a');
         a.href = `#${ID_VALUE}-${index + 1}`;
-        const additionHours = reduceByProp(item.addition, 'workingHours');
+        const additionHours = Utils.reduceByProp(item.addition, 'workingHours');
         const additionText = additionHours ? ` + <span style="color: firebrick">${additionHours}</span>` : ''
         a.innerHTML = `${personName}(${item.workingHours}${additionText})`;
         if (!item.person) {
@@ -365,8 +376,8 @@ dom.append(`<div sp style='  position: absolute;
         div.style.display = 'none';
         const subs = item.tasks.filter(item => item.issueTypeDetail.name === '子工作项');
         const completed = subs.filter(item => item.issueStatus.name === '已完成');
-        const completedHours = reduceByProp(completed, 'workingHours');
-        const subsHours = reduceByProp(subs, 'workingHours');
+        const completedHours = Utils.reduceByProp(completed, 'workingHours');
+        const subsHours = Utils.reduceByProp(subs, 'workingHours');
         const hoursRate = completedHours / subsHours;
         const deltaRate = hoursRate - iterationRate;
 
@@ -376,8 +387,8 @@ dom.append(`<div sp style='  position: absolute;
           return `
             <p>
              <b style="color: firebrick">${item.iteration.name}：</b>
-             <b>${reduceByProp(completed, 'workingHours')}</b>/${reduceByProp(subs, 'workingHours')}&nbsp;&nbsp;&nbsp;&nbsp;
-             完成率：<b>${formatRate(reduceByProp(completed, 'workingHours') / reduceByProp(subs, 'workingHours'))}</b>&nbsp;&nbsp;&nbsp;&nbsp;
+             <b>${Utils.reduceByProp(completed, 'workingHours')}</b>/${Utils.reduceByProp(subs, 'workingHours')}&nbsp;&nbsp;&nbsp;&nbsp;
+             完成率：<b>${Utils.formatRate(Utils.reduceByProp(completed, 'workingHours') / Utils.reduceByProp(subs, 'workingHours'))}</b>&nbsp;&nbsp;&nbsp;&nbsp;
             </p>
           `
         }).join('');
@@ -385,15 +396,15 @@ dom.append(`<div sp style='  position: absolute;
         let innerHTML = `
             ${additionLines}
           <p>
-          子工作项进度：<b>${completed.length}</b>/${subs.length}&nbsp;&nbsp;&nbsp;&nbsp;完成率：<b>${formatRate(completed.length / subs.length)}</b>`;
+          子工作项进度：<b>${completed.length}</b>/${subs.length}&nbsp;&nbsp;&nbsp;&nbsp;完成率：<b>${Utils.formatRate(completed.length / subs.length)}</b>`;
         item.person && (innerHTML += `<button class="_week_report new-button-1kWt8bSwah default-14YlfkOcgs h-32-1KvNA1yjmi" style="margin-left: 12px" data-user="${item.person.id}">生成周报</button>
           <button class="_all_report new-button-1kWt8bSwah default-14YlfkOcgs h-32-1KvNA1yjmi" style="margin-left: 12px" data-user="${item.person.id}">生成迭代报告</button>`)
         innerHTML += `
           </p>
           <p>工时进度：
-            <b>${reduceByProp(completed, 'workingHours')}</b>/${reduceByProp(subs, 'workingHours')}&nbsp;&nbsp;&nbsp;&nbsp;
-            完成率：<b>${formatRate(reduceByProp(completed, 'workingHours') / reduceByProp(subs, 'workingHours'))}</b>&nbsp;&nbsp;&nbsp;&nbsp;
-            <b style="color: ${deltaRate > 0 ? 'green' : 'red'}">${deltaRate > 0 ? '⬆' : '⬇'}</b>${formatRate(deltaRate)}（期望：${formatRate(iterationRate)}）
+            <b>${Utils.reduceByProp(completed, 'workingHours')}</b>/${Utils.reduceByProp(subs, 'workingHours')}&nbsp;&nbsp;&nbsp;&nbsp;
+            完成率：<b>${Utils.formatRate(Utils.reduceByProp(completed, 'workingHours') / Utils.reduceByProp(subs, 'workingHours'))}</b>&nbsp;&nbsp;&nbsp;&nbsp;
+            <b style="color: ${deltaRate > 0 ? 'green' : 'red'}">${deltaRate > 0 ? '⬆' : '⬇'}</b>${Utils.formatRate(deltaRate)}（期望：${Utils.formatRate(iterationRate)}）
           </p>
         `
         div.innerHTML = innerHTML;
@@ -417,6 +428,9 @@ dom.append(`<div sp style='  position: absolute;
   }
 
 
+  /**
+   * 左上角图标转圈圈
+   */
   function hackLiYang() {
     try {
       // Array.from($('img')).forEach(el => {
@@ -445,55 +459,6 @@ dom.append(`<div sp style='  position: absolute;
     }
   }
 
-
-  function reduceByProp(arr, prop) {
-    return arr.reduce((total, curr) => {
-      return total += (curr[prop] || 0)
-    }, 0)
-  }
-
-  function formatRate(number) {
-    let ico;
-    if (number >= 1)
-      ico = '🌕'
-    else if (number >= 0.75)
-      ico = '🌔'
-    else if (number >= 0.5)
-      ico = '🌓'
-    else if (number > 0)
-      ico = '🌒'
-    else ico = '🌑'
-    return ico + (Number(number) * 100).toFixed(2) + '%'
-  }
-
-  function debounce(fn) {
-    let t = null
-    return function () {
-      if (t) {
-        clearTimeout(t)
-      }
-      t = setTimeout(() => {
-        fn.apply(this, arguments);
-      }, 200)
-    }
-  }
-
-  // Your code here...
-
-  function isCurrentWeek(past) {
-    const pastTime = new Date(past).getTime()
-    const today = new Date(new Date().toLocaleDateString())
-    let day = today.getDay()
-    day = day == 0 ? 7 : day
-    const oneDayTime = 60 * 60 * 24 * 1000
-    const monday = new Date(today.getTime() - (oneDayTime * (day - 1)))
-    const nextMonday = new Date(today.getTime() + (oneDayTime * (8 - day)))
-    if (monday.getTime() <= pastTime && nextMonday.getTime() > pastTime) {
-      return true
-    } else {
-      return false
-    }
-  }
 
   /**
    * 史诗下所有事项（故事 + 子任务）
@@ -573,7 +538,7 @@ dom.append(`<div sp style='  position: absolute;
 
         if (type === 'week') {
           const time = new Date(log.createdAt)
-          if (isCurrentWeek(time)) {
+          if (Utils.isCurrentWeek(time)) {
             weekly_tasks.push(processingTasks.find(item => item.code === code))
           }
         } else {
@@ -612,7 +577,7 @@ dom.append(`<div sp style='  position: absolute;
           // 计算史诗进度 end
           text += `<b style="font-weight: bold;">${Number(index) + 1}、
 <a href="https://wydevops.coding.net/p/${store.project.name}/epics/issues/${epic.code}/detail">史诗 ${epic.code}</a> ${epic.name}
- （${statData.curr} / ${statData.total}）${formatRate(statData.curr / statData.total)}</b>`
+ （${statData.curr} / ${statData.total}）${Utils.formatRate(statData.curr / statData.total)}</b>`
         } else
           text += `<b>${Number(index) + 1}、其他（无史诗）</b>`
         text += `<ul>`
@@ -709,6 +674,5 @@ dom.append(`<div sp style='  position: absolute;
       });
     })
   }
-
 
 })();
