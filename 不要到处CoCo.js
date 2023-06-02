@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         不要到处coco
 // @namespace    https://wydevops.coding.net/
-// @version      1.2.3
+// @version      1.3.0
 // @description  coding增强
 // @author       你
 // @match        https://wydevops.coding.net/*
@@ -70,7 +70,7 @@
   window.fetch = function () {
     const url = arguments[0];
     if (showParentIssues && url.includes('subtask-tree')) {
-      console.log('我是拦截器(o^^o)', arguments);
+      //console.log('我是拦截器(o^^o)', arguments);
       const modifiedUrl = replaceQueryParam(url, 'showParentIssues', 'true');
       console.log(modifiedUrl);
       arguments[0] = modifiedUrl;
@@ -185,7 +185,7 @@
 
   async function rerender() {
     $(`#${ID_VALUE}`).remove()
-    store.iterationId = iterationId;
+    //store.iterationId = iterationId;
     await getIteration();
     await getSubTree();
 
@@ -756,5 +756,76 @@ dom.append(`<div sp style='  position: absolute;
       });
     })
   }
+
+  // 创建 Fetch 请求拦截器对象
+  var fetchInterceptor = {
+    // 请求拦截
+    request: function (url, options) {
+      // 调用拦截回调函数，并传递请求参数
+      // console.log('请求拦截:', url, options);
+
+      // 修改请求参数示例
+      // options.headers['Authorization'] = 'Bearer xxxxxxx';
+
+      return [url, options];
+    },
+
+    // 响应拦截
+    response: function (response) {
+      // 调用拦截回调函数，并传递响应数据
+      // console.log('响应拦截:', response);
+
+      // 修改响应数据示例
+      // var modifiedResponse = { status: 200, data: 'Modified response' };
+      // return Promise.resolve(new Response(JSON.stringify(modifiedResponse), response));
+
+      return response;
+    }
+  };
+
+  const __fetch = window.fetch;
+  // 重写 Fetch API 的 fetch 方法
+  window.fetch = function () {
+    var args = arguments;
+    var url = args[0];
+    var options = args[1];
+
+    // 调用请求拦截回调函数
+    var interceptedRequest = fetchInterceptor.request(url, options);
+
+    // 发起原始的 Fetch 请求
+    return __fetch.apply(this, interceptedRequest)
+      .then(function (response) {
+        // 调用响应拦截回调函数
+        return fetchInterceptor.response(response);
+      });
+  };
+
+
+
+  // 创建拦截器对象
+  var interceptor = fetchInterceptor;
+
+  // 请求拦截
+  interceptor.request = function (url, options) {
+
+    if(options.method === 'PATCH') {
+      console.log('自定义请求拦截:', url, options);
+    }
+    return [url, options];
+  };
+
+  // 响应拦截
+  interceptor.response = function (response) {
+
+    if(response.url.endsWith("fields") || response.url.endsWith("join/iteration")) {
+      console.log('自定义响应拦截:', response);
+      rerender();
+    }
+    // 修改响应数据示例
+    var modifiedResponse = { status: 200, data: 'Modified response' };
+    return response;
+  };
+
 
 })();
