@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         不要到处coco
 // @namespace    https://wydevops.coding.net/
-// @version      1.3.0
+// @version      1.3.1
 // @description  coding增强
 // @author       你
 // @match        https://wydevops.coding.net/*
@@ -248,6 +248,9 @@
           const item0 = _map[name];
           if (!item0) return;
           item0.iteration = iteration;
+          if (item.addition.find(addItem => addItem.iteration.id === iteration.id)) {
+            return;
+          }
           item.addition.push(item0);
         })
       }
@@ -802,14 +805,13 @@ dom.append(`<div sp style='  position: absolute;
   };
 
 
-
   // 创建拦截器对象
   var interceptor = fetchInterceptor;
 
   // 请求拦截
   interceptor.request = function (url, options) {
 
-    if(options.method === 'PATCH') {
+    if (options.method === 'PATCH') {
       console.log('自定义请求拦截:', url, options);
     }
     return [url, options];
@@ -818,12 +820,12 @@ dom.append(`<div sp style='  position: absolute;
   // 响应拦截
   interceptor.response = function (response) {
 
-    if(response.url.endsWith("fields") || response.url.endsWith("join/iteration")) {
+    if (response.url.endsWith("fields") || response.url.endsWith("join/iteration")) {
       console.log('自定义响应拦截:', response);
       rerender();
     }
     // 修改响应数据示例
-    var modifiedResponse = { status: 200, data: 'Modified response' };
+    var modifiedResponse = {status: 200, data: 'Modified response'};
     return response;
   };
 
