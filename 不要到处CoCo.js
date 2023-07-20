@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         不要到处coco
 // @namespace    https://wydevops.coding.net/
-// @version      1.3.1
+// @version      1.3.2
 // @description  coding增强
 // @author       你
 // @match        https://wydevops.coding.net/*
@@ -46,7 +46,7 @@
         }
         t = setTimeout(() => {
           fn.apply(this, arguments);
-        }, 200)
+        }, 400)
       }
     },
     isCurrentWeek(past) {
@@ -136,6 +136,14 @@
   }
   .ui-tabs-active.ui-state-active .coco-addition-hours {
     color: #ffa2a2;
+  }
+  .sp_sub_tag {
+  background: #e3f4fc;
+  color: #045fe6;
+  min-width: 24px !important;
+  position: relative !important;
+  right: -46px;
+  text-align: center;
   }
   `
   document.head.appendChild(style)
@@ -248,7 +256,7 @@
           const item0 = _map[name];
           if (!item0) return;
           item0.iteration = iteration;
-          if (item.addition.find(addItem => addItem.iteration.id === iteration.id)) {
+          if(item.addition.find(addItem => addItem.iteration.id === iteration.id)) {
             return;
           }
           item.addition.push(item0);
@@ -372,23 +380,36 @@
       // console.log(dom, item.$hours);
       try {
         const td = dom.parent().parent().parent().parent().children()[1];
-        if ($(td).find('div.spspspspsp').length) return;
+        if ($(td).find('div.spspspspsp').length) throw new Error();
         td.style.position = 'relative';
         // `<div class="tag-OnRxknb07m epic-1Eg_rPGjj7"><div class="icon-24obWj6mLq"></div><div class="detail-hc4p8Zzxbo">【保洁】【保洁-0324】新增</div></div>`
         $(td).prepend(`<div sp class="spspspspsp tag-OnRxknb07m epic-1Eg_rPGjj7"><div class="icon-24obWj6mLq"></div><div class="detail-hc4p8Zzxbo">${`${item.$hours}`.slice(0, 5)}/<span style="color: #ffa200">${fiberMatch(item.$hours)}</span></div></div>`)
         /*$(td).append(`<div sp style='position: absolute; font-size: 12px;
-                              left: 32px;
-                              bottom: -2px;
-                              color: #222;
-                              font-weight: bold;'>${item.$hours}/<span style="color: #ffa200">${fiberMatch(item.$hours)}</span></div>`)*/
+                      left: 32px;
+                      bottom: -2px;
+                      color: #222;
+                      font-weight: bold;'>${item.$hours}/<span style="color: #ffa200">${fiberMatch(item.$hours)}</span></div>`)*/
       } catch (e) {
       }
+      item.subTasks.forEach(sub => {
+        const sub_dom = $(`a[href^='/p/${store.project.name}/subtasks/issues/${sub.code}/detail']`);
+        console.log(sub_dom)
+        try {
+          const td_sub = sub_dom.parent().parent().parent().parent().children()[1];
+          if ($(td_sub).find('div.spspspspsp').length) throw new Error();
+          td_sub.style.position = 'relative';
+          // `<div class="tag-OnRxknb07m epic-1Eg_rPGjj7"><div class="icon-24obWj6mLq"></div><div class="detail-hc4p8Zzxbo">【保洁】【保洁-0324】新增</div></div>`
+          $(td_sub).prepend(`<div sp class="spspspspsp tag-OnRxknb07m sp_sub_tag"><div class="detail-hc4p8Zzxbo">${`${sub.workingHours}`.slice(0, 5)}</div></div>`)
+
+        } catch (e) {
+        }
+      })
       /*
 dom.append(`<div sp style='  position: absolute;
-                          left: auto;
-                          bottom: 0;
-                          color: #ffa200;
-                          font-weight: bold;'>${item.$hours}</div>`) */
+                    left: auto;
+                    bottom: 0;
+                    color: #ffa200;
+                    font-weight: bold;'>${item.$hours}</div>`) */
     });
   })
   let interval = null;
@@ -805,13 +826,14 @@ dom.append(`<div sp style='  position: absolute;
   };
 
 
+
   // 创建拦截器对象
   var interceptor = fetchInterceptor;
 
   // 请求拦截
   interceptor.request = function (url, options) {
 
-    if (options.method === 'PATCH') {
+    if(options.method === 'PATCH') {
       console.log('自定义请求拦截:', url, options);
     }
     return [url, options];
@@ -820,12 +842,12 @@ dom.append(`<div sp style='  position: absolute;
   // 响应拦截
   interceptor.response = function (response) {
 
-    if (response.url.endsWith("fields") || response.url.endsWith("join/iteration")) {
+    if(response.url.endsWith("fields") || response.url.endsWith("join/iteration")) {
       console.log('自定义响应拦截:', response);
       rerender();
     }
     // 修改响应数据示例
-    var modifiedResponse = {status: 200, data: 'Modified response'};
+    var modifiedResponse = { status: 200, data: 'Modified response' };
     return response;
   };
 
