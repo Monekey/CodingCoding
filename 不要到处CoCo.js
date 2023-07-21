@@ -167,6 +167,7 @@
     transition: 0.2s;
     box-shadow: 1px 1px 4px 1px #e0e0e0;
     border-radius: 4px;
+    margin: 1px 2px;
   }
   .ui-tabs .ui-tabs-nav li.ui-state-default.ui-corner-top:hover {
     transform: scale(1.08);
