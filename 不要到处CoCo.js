@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         不要到处coco
 // @namespace    https://wydevops.coding.net/
-// @version      1.4.1
+// @version      1.4.2
 // @description  coding增强
 // @author       你
 // @match        https://wydevops.coding.net/*
@@ -121,6 +121,7 @@
     padding: 3px 5px 2px 4px;
     border-top-left-radius: 4px;
     border-top-right-radius: 4px;
+    margin-top: 4px;
   }
   .coco-tooltip {
     position:absolute;
@@ -155,12 +156,21 @@
     font-size: 13px;
   }
   .ui-tabs ul.ui-tabs-nav {
-    padding: 0 0.2em;
+    padding: 0em 0.2em 0.1em 0;
     background: #FFF5E6;
   }
   
   .ui-tabs .ui-tabs-nav li.ui-state-default.ui-corner-top {
     background: #fff;
+    border: 1px solid #ffebc9;
+    padding: 1px 2px;
+    transition: 0.2s;
+    box-shadow: 1px 1px 4px 1px #e0e0e0;
+    border-radius: 4px;
+  }
+  .ui-tabs .ui-tabs-nav li.ui-state-default.ui-corner-top:hover {
+    transform: scale(1.08);
+    box-shadow: 1px 1px 8px 1px #e0e0e0;
   }
   
   
@@ -510,7 +520,7 @@ dom.append(`<div sp style='  position: absolute;
         }
 
         let innerHTML = `
-          <p style="margin-bottom: 4px;"><b>${store.iteration.name}：</b>
+          <p style="margin-bottom: 0;"><b>${store.iteration.name}：</b>
             <b>${Utils.reduceByProp(completed, 'workingHours')}</b>/${Utils.reduceByProp(subs, 'workingHours')}&nbsp;&nbsp;&nbsp;&nbsp;
             完成率：<b>${Utils.formatRate(Utils.reduceByProp(completed, 'workingHours') / Utils.reduceByProp(subs, 'workingHours'))}</b>&nbsp;&nbsp;&nbsp;&nbsp;
             <b style="color: ${deltaRate > 0 ? 'green' : 'red'}">${deltaRate > 0 ? '⬆' : '⬇'}</b>${Utils.formatRate(deltaRate)}（期望：${Utils.formatRate(iterationRate)}）
@@ -883,3 +893,4 @@ dom.append(`<div sp style='  position: absolute;
   };
 
 })();
+
