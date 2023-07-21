@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         不要到处coco
 // @namespace    https://wydevops.coding.net/
-// @version      1.3.2
+// @version      1.4.0
 // @description  coding增强
 // @author       你
 // @match        https://wydevops.coding.net/*
@@ -38,7 +38,7 @@
       else ico = '🌑'
       return ico + (Number(number) * 100).toFixed(2) + '%'
     },
-    debounce(fn) {
+    debounce(fn, time = 500) {
       let t = null
       return function () {
         if (t) {
@@ -46,7 +46,7 @@
         }
         t = setTimeout(() => {
           fn.apply(this, arguments);
-        }, 400)
+        }, time)
       }
     },
     isCurrentWeek(past) {
@@ -135,15 +135,42 @@
     color: firebrick
   }
   .ui-tabs-active.ui-state-active .coco-addition-hours {
-    color: #ffa2a2;
+    color: #fff;
   }
   .sp_sub_tag {
   background: #e3f4fc;
   color: #045fe6;
   min-width: 24px !important;
-  position: relative !important;
-  right: -46px;
+  position: absolute !important;
+  left: 15px;
   text-align: center;
+  }
+  .ui-tabs div.ui-tabs-panel {
+    padding: 4px 6px;
+    margin-bottom: -10px;
+    font-size: 13px;
+  }
+  
+  .ui-tabs .ui-tabs-nav a.ui-tabs-anchor {
+    padding: 5px 6px;
+    font-size: 13px;
+  }
+  .ui-tabs ul.ui-tabs-nav {
+    padding: 0 0.2em;
+    background: #FFF5E6;
+  }
+  
+  .ui-tabs .ui-tabs-nav li.ui-state-default.ui-corner-top {
+    background: #fff;
+  }
+  
+  
+  li.ui-state-default.ui-corner-top.ui-tabs-active.ui-state-active {
+    background: #FF9F08;
+    border: 1px solid #FFB239;
+  }
+  div.ui-widget.ui-widget-content {
+    border: none;
   }
   `
   document.head.appendChild(style)
@@ -152,9 +179,9 @@
     projectList: [],
     project: {}, iterationId: '', iteration: {}, personHoursMap: {}, story: []
   }
-
+  const render = Utils.debounce(_render)
   const ID_VALUE = 'coco-tabs';
-  const main = async () => {
+  const main = Utils.debounce(async () => {
     if (!/^\/p(.+)\//.test(location.pathname)) return;
 
     const projectName = /^\/p\/(.+?)\//.exec(location.pathname)[1];
@@ -189,9 +216,11 @@
       }
 
     }
-  }
+  }, 800)
 
-  async function rerender() {
+  const rerender = Utils.debounce(_rerender, 1000)
+  async function _rerender() {
+    console.log('RERENDER:!!!!!!!!!!!')
     $(`#${ID_VALUE}`).remove()
     //store.iterationId = iterationId;
     await getIteration();
@@ -203,7 +232,7 @@
   setInterval(() => {
     main();
     hackLiYang();
-  }, 1000)
+  }, 1200)
 
   window.addEventListener('locationchange', main)
 
@@ -393,7 +422,7 @@
       }
       item.subTasks.forEach(sub => {
         const sub_dom = $(`a[href^='/p/${store.project.name}/subtasks/issues/${sub.code}/detail']`);
-        console.log(sub_dom)
+        // console.log(sub_dom)
         try {
           const td_sub = sub_dom.parent().parent().parent().parent().children()[1];
           if ($(td_sub).find('div.spspspspsp').length) throw new Error();
@@ -414,7 +443,7 @@ dom.append(`<div sp style='  position: absolute;
   })
   let interval = null;
 
-  function render() {
+  function _render() {
     window.$ = $
     interval && clearInterval(interval)
     const iterationRate = Number(((1 - store.iteration.remainingDays / ((store.iteration.endAt - store.iteration.startAt) / 3600 / 24 / 1000))).toFixed(2));
@@ -782,7 +811,7 @@ dom.append(`<div sp style='  position: absolute;
   }
 
   // 创建 Fetch 请求拦截器对象
-  var fetchInterceptor = {
+  const fetchInterceptor = {
     // 请求拦截
     request: function (url, options) {
       // 调用拦截回调函数，并传递请求参数
@@ -810,12 +839,12 @@ dom.append(`<div sp style='  position: absolute;
   const __fetch = window.fetch;
   // 重写 Fetch API 的 fetch 方法
   window.fetch = function () {
-    var args = arguments;
-    var url = args[0];
-    var options = args[1];
+    const args = arguments;
+    const url = args[0];
+    const options = args[1];
 
     // 调用请求拦截回调函数
-    var interceptedRequest = fetchInterceptor.request(url, options);
+    const interceptedRequest = fetchInterceptor.request(url, options);
 
     // 发起原始的 Fetch 请求
     return __fetch.apply(this, interceptedRequest)
@@ -828,7 +857,7 @@ dom.append(`<div sp style='  position: absolute;
 
 
   // 创建拦截器对象
-  var interceptor = fetchInterceptor;
+  const interceptor = fetchInterceptor;
 
   // 请求拦截
   interceptor.request = function (url, options) {
@@ -842,7 +871,7 @@ dom.append(`<div sp style='  position: absolute;
   // 响应拦截
   interceptor.response = function (response) {
 
-    if(response.url.endsWith("fields") || response.url.endsWith("join/iteration")) {
+    if(response.url.endsWith("/fields") || response.url.endsWith("join/iteration")) {
       console.log('自定义响应拦截:', response);
       rerender();
     }
@@ -850,6 +879,5 @@ dom.append(`<div sp style='  position: absolute;
     var modifiedResponse = { status: 200, data: 'Modified response' };
     return response;
   };
-
 
 })();
