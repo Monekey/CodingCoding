@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         不要到处coco
 // @namespace    https://wydevops.coding.net/
-// @version      1.4.0
+// @version      1.4.1
 // @description  coding增强
 // @author       你
 // @match        https://wydevops.coding.net/*
@@ -147,12 +147,11 @@
   }
   .ui-tabs div.ui-tabs-panel {
     padding: 4px 6px;
-    margin-bottom: -10px;
     font-size: 13px;
   }
   
   .ui-tabs .ui-tabs-nav a.ui-tabs-anchor {
-    padding: 5px 6px;
+    padding: 2px 6px;
     font-size: 13px;
   }
   .ui-tabs ul.ui-tabs-nav {
@@ -171,6 +170,7 @@
   }
   div.ui-widget.ui-widget-content {
     border: none;
+    padding-bottom: 0;
   }
   `
   document.head.appendChild(style)
@@ -219,6 +219,7 @@
   }, 800)
 
   const rerender = Utils.debounce(_rerender, 1000)
+
   async function _rerender() {
     console.log('RERENDER:!!!!!!!!!!!')
     $(`#${ID_VALUE}`).remove()
@@ -285,7 +286,7 @@
           const item0 = _map[name];
           if (!item0) return;
           item0.iteration = iteration;
-          if(item.addition.find(addItem => addItem.iteration.id === iteration.id)) {
+          if (item.addition.find(addItem => addItem.iteration.id === iteration.id)) {
             return;
           }
           item.addition.push(item0);
@@ -382,7 +383,9 @@
 
   const incept = Utils.debounce(() => {
     try {
-      if (!$('#_on_off').length) {
+      /**
+
+       if (!$('#_on_off').length) {
         const filterBarDom = $('div[class^="filter-bar-section-"]');
         //console.log('filterBarDom', filterBarDom);
         $(filterBarDom[0]).append($(`<button id="_on_off" style="width: 40px;height: 24px;color: rgb(25, 128, 97);background-color: rgb(195, 243, 203);margin: 2px 16px 10px 10px;border: none;font-weight: bold;border-radius: 3px;cursor: pointer;
@@ -401,7 +404,7 @@
           }
         }
       }
-
+       **/
     } catch {
     }
     store.story.forEach(item => {
@@ -855,14 +858,13 @@ dom.append(`<div sp style='  position: absolute;
   };
 
 
-
   // 创建拦截器对象
   const interceptor = fetchInterceptor;
 
   // 请求拦截
   interceptor.request = function (url, options) {
 
-    if(options.method === 'PATCH') {
+    if (options.method === 'PATCH') {
       console.log('自定义请求拦截:', url, options);
     }
     return [url, options];
@@ -871,12 +873,12 @@ dom.append(`<div sp style='  position: absolute;
   // 响应拦截
   interceptor.response = function (response) {
 
-    if(response.url.endsWith("/fields") || response.url.endsWith("join/iteration")) {
+    if (response.url.endsWith("/fields") || response.url.endsWith("join/iteration")) {
       console.log('自定义响应拦截:', response);
       rerender();
     }
     // 修改响应数据示例
-    var modifiedResponse = { status: 200, data: 'Modified response' };
+    var modifiedResponse = {status: 200, data: 'Modified response'};
     return response;
   };
 
