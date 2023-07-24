@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         不要到处coco
 // @namespace    https://wydevops.coding.net/
-// @version      1.4.4
+// @version      1.5.0
 // @description  coding增强
 // @author       你
 // @match        https://wydevops.coding.net/*
@@ -547,8 +547,11 @@ dom.append(`<div sp style='  position: absolute;
         collapsible: true
       });
       try {
-        $('#coco-tabs > ul > li').on('click', (e) => {
-          switchPerson($(e.target)[0].innerText.replace(/(.+)\(.+/, '$1'))
+        $('#coco-tabs > ul > li').on('contextmenu', (event) => {
+          event.preventDefault();
+          event.stopPropagation();
+          event.target.click();
+          switchPerson($(event.target)[0].innerText.replace(/(.+)\(.+/, '$1'), !$(event.target).parent().hasClass('ui-state-active'))
         })
       } catch (e) {
       }
@@ -902,7 +905,7 @@ dom.append(`<div sp style='  position: absolute;
 
   let _i1, _i2;
 
-  function switchPerson(personName = "崔启蒙") {
+  function switchPerson(personName = "崔启蒙", onlyClear = false) {
     console.log("switchPerson", personName)
     _i1 && clearInterval(_i1)
     _i2 && clearInterval(_i2)
@@ -912,6 +915,7 @@ dom.append(`<div sp style='  position: absolute;
       // $DropDown[0].style.visibility = 'hidden'
       _i1 = setInterval(() => {
         if (!$DropDown.find('div[class^="panel-"]').length) {
+          $DropDown.find('div[class^="trigger-"]')[1].click();
           return
         }
         const $Panel = $DropDown.find('div[class^="panel-"]');
@@ -924,15 +928,19 @@ dom.append(`<div sp style='  position: absolute;
         const _key = Object.keys($Input).find(key => key.startsWith('__reactInternalInstance'));
         $Input[_key].memoizedProps.onChange({target: {value: personName}})
         clearInterval(_i1);
+        if (onlyClear) {
+          document.body.click()
+          return;
+        }
         _i2 = setInterval(() => {
           if ($Panel.find('div[class^="item-"]').length !== 1) return
           $Panel.find('div[class^="item-"]')[0].click()
           clearInterval(_i2);
           setTimeout(() => {
             document.body.click()
-          }, 100)
+          }, 80)
         }, 100)
-      }, 100)
+      }, 300)
     } catch (e) {
 
     }
