@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         不要到处coco
 // @namespace    https://wydevops.coding.net/
-// @version      1.4.3
+// @version      1.4.4
 // @description  coding增强
 // @author       你
 // @match        https://wydevops.coding.net/*
@@ -150,7 +150,7 @@
     padding: 4px 6px;
     font-size: 13px;
   }
-  
+
   .ui-tabs .ui-tabs-nav a.ui-tabs-anchor {
     padding: 2px 6px;
     font-size: 13px;
@@ -159,7 +159,7 @@
     padding: 0em 0.2em 0.1em 0;
     background: #FFF5E6;
   }
-  
+
   .ui-tabs .ui-tabs-nav li.ui-state-default.ui-corner-top {
     background: #fff;
     border: 1px solid #ffebc9;
@@ -173,8 +173,8 @@
     transform: scale(1.08);
     box-shadow: 1px 1px 8px 1px #e0e0e0;
   }
-  
-  
+
+
   li.ui-state-default.ui-corner-top.ui-tabs-active.ui-state-active {
     background: #FF9F08;
     border: 1px solid #FFB239;
@@ -546,6 +546,12 @@ dom.append(`<div sp style='  position: absolute;
       $(`#${ID_VALUE}`).tabs({
         collapsible: true
       });
+      try {
+        $('#coco-tabs > ul > li').on('click', (e) => {
+          switchPerson($(e.target)[0].innerText.replace(/(.+)\(.+/, '$1'))
+        })
+      } catch (e) {
+      }
       var x = 15;
       var y = -40;
       $(".coco-info-icon").mouseover(function (e) {
@@ -893,5 +899,43 @@ dom.append(`<div sp style='  position: absolute;
     return response;
   };
 
+
+  let _i1, _i2;
+
+  function switchPerson(personName = "崔启蒙") {
+    console.log("switchPerson", personName)
+    _i1 && clearInterval(_i1)
+    _i2 && clearInterval(_i2)
+    try {
+      const $DropDown = $($('div[class^="filter-bar-section-"]').find('div[class^="dropdown-"]')[2]);
+      $DropDown.find('div[class^="trigger-"]')[1].click();
+      // $DropDown[0].style.visibility = 'hidden'
+      _i1 = setInterval(() => {
+        if (!$DropDown.find('div[class^="panel-"]').length) {
+          return
+        }
+        const $Panel = $DropDown.find('div[class^="panel-"]');
+        $Panel.hide();
+        if ($Panel.find('div[class^="side-operation-"]').find('span[class^="clear-button-"]').length) {
+          // console.log($Panel, $Panel.find('div[class^="clear-button-"]').length, $Panel.find('div[class^="clear-button-"]')[0])
+          $Panel.find('div[class^="side-operation-"]').find('span[class^="clear-button-"]')[0].click();
+        }
+        const $Input = $Panel.find('input')[0];
+        const _key = Object.keys($Input).find(key => key.startsWith('__reactInternalInstance'));
+        $Input[_key].memoizedProps.onChange({target: {value: personName}})
+        clearInterval(_i1);
+        _i2 = setInterval(() => {
+          if ($Panel.find('div[class^="item-"]').length !== 1) return
+          $Panel.find('div[class^="item-"]')[0].click()
+          clearInterval(_i2);
+          setTimeout(() => {
+            document.body.click()
+          }, 100)
+        }, 100)
+      }, 100)
+    } catch (e) {
+
+    }
+  }
 })();
 
