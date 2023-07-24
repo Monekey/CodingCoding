@@ -924,14 +924,14 @@ dom.append(`<div sp style='  position: absolute;
           // console.log($Panel, $Panel.find('div[class^="clear-button-"]').length, $Panel.find('div[class^="clear-button-"]')[0])
           $Panel.find('div[class^="side-operation-"]').find('span[class^="clear-button-"]')[0].click();
         }
-        const $Input = $Panel.find('input')[0];
-        const _key = Object.keys($Input).find(key => key.startsWith('__reactInternalInstance'));
-        $Input[_key].memoizedProps.onChange({target: {value: personName}})
         clearInterval(_i1);
         if (onlyClear) {
           document.body.click()
           return;
         }
+        const $Input = $Panel.find('input')[0];
+        const _key = Object.keys($Input).find(key => key.startsWith('__reactInternalInstance'));
+        $Input[_key].memoizedProps.onChange({target: {value: personName}})
         _i2 = setInterval(() => {
           if ($Panel.find('div[class^="item-"]').length !== 1) return
           $Panel.find('div[class^="item-"]')[0].click()
