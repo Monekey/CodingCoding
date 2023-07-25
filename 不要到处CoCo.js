@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         不要到处coco
 // @namespace    https://wydevops.coding.net/
-// @version      1.6.1
+// @version      1.6.2
 // @description  coding增强
 // @author       你
 // @match        https://wydevops.coding.net/*
@@ -159,6 +159,7 @@
   .ui-tabs ul.ui-tabs-nav {
     padding: 0em 0.2em 0.1em 0;
     background: #FFF5E6;
+    border: none;
   }
 
   .ui-tabs .ui-tabs-nav li.ui-state-default.ui-corner-top {
@@ -182,7 +183,8 @@
   }
   div.ui-widget.ui-widget-content {
     border: none;
-    padding-bottom: 0;
+    padding-bottom: 16px;
+    background: #FFF5E6;
   }
   `
   document.head.appendChild(style)
