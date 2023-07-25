@@ -1,11 +1,12 @@
 // ==UserScript==
 // @name         不要到处coco
 // @namespace    https://wydevops.coding.net/
-// @version      1.5.0
+// @version      1.6.0
 // @description  coding增强
 // @author       你
 // @match        https://wydevops.coding.net/*
 // @require      http://code.jquery.com/jquery-2.1.1.min.js
+// @require      https://cdn.staticfile.org/jquery-cookie/1.4.1/jquery.cookie.min.js
 // @require      http://code.jquery.com/ui/1.11.0/jquery-ui.min.js
 // @resource      https://code.jquery.com/ui/1.13.2/themes/base/jquery-ui.css
 // @icon         data:image/gif;base64,R0lGODlhAQABAAAAACH5BAEKAAEALAAAAAABAAEAAAICTAEAOw==
@@ -310,10 +311,69 @@
   const getSubTreeSingle = async function (projectId, iterationId) {
     return new Promise((resolve, reject) => {
       $.ajax({
-        url: `https://wydevops.coding.net/api/project/${projectId}/iterations/${iterationId}/issues/subtask-tree?keywords=&sortBy=ISSUE_ITERATION_SORT%3AASC&showParentIssues=true&page=1&pageSize=500`,
-        data: {},
-        type: "get",
-        contentType: "application/x-www-form-urlencoded; charset=UTF-8",
+        url: `https://wydevops.coding.net/api/project/${projectId}/iterations/${iterationId}/issues/tree`,
+        data: JSON.stringify({
+          "content": {
+            "sort": {
+              "key": "PRIORITY",
+              "value": "DESC"
+            },
+            "conditions": [
+              {
+                "value": [
+                  "TODO",
+                  "PROCESSING",
+                  "COMPLETED"
+                ],
+                "key": "STATUS_TYPE",
+                "fixed": true,
+                "constValue": [],
+                "validInfo": [],
+                "userMap": {
+                  "COMPLETED": {
+                    "value": "COMPLETED"
+                  }
+                },
+                "selectedItems": {
+                  "COMPLETED": {
+                    "value": "COMPLETED"
+                  }
+                }
+              },
+              {
+                "value": [],
+                "valueChanged": null,
+                "validInfo": null,
+                "userMap": {},
+                "status": null,
+                "key": "ASSIGNEE",
+                "fixed": true,
+                "constValue": []
+              },
+              {
+                "value": "",
+                "key": "BASE_ISSUE_TYPE",
+                "fixed": true,
+                "constValue": []
+              },
+              {
+                "key": "ITERATION",
+                "value": [
+                  iterationId
+                ]
+              }
+            ],
+            "showSubIssues": true,
+            "showParentIssues": false
+          },
+          "page": 1,
+          "pageSize": 500
+        }),
+        type: "POST",
+        contentType: "application/json;charset=UTF-8",
+        headers: {
+          'x-xsrf-token': $.cookie('XSRF-TOKEN')
+        },
         dataType: "json",
         success: function ({data, iteration_not_exist}) {
           if (iteration_not_exist) {
