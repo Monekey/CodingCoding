@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         不要到处coco
 // @namespace    https://wydevops.coding.net/
-// @version      1.6.0
+// @version      1.6.1
 // @description  coding增强
 // @author       你
 // @match        https://wydevops.coding.net/*
@@ -970,16 +970,17 @@ dom.append(`<div sp style='  position: absolute;
     _i1 && clearInterval(_i1)
     _i2 && clearInterval(_i2)
     try {
-      const $DropDown = $($('div[class^="filter-bar-section-"]').find('div[class^="dropdown-"]')[2]);
+      // const $DropDown = $($('div[class^="filter-bar-section-"]').find('div[class^="dropdown-"]')[2]);
+      const $DropDown = $($($('div[class^="filterAttrs-"]').find('span[class="filterFixedItem"]'))[1]);
       $DropDown.find('div[class^="trigger-"]')[1].click();
       // $DropDown[0].style.visibility = 'hidden'
       _i1 = setInterval(() => {
-        if (!$DropDown.find('div[class^="panel-"]').length) {
+        if (!$DropDown.find('div[class^="newfilter-dropdown panel-"]').length) {
           $DropDown.find('div[class^="trigger-"]')[1].click();
           return
         }
-        const $Panel = $DropDown.find('div[class^="panel-"]');
-        $Panel.hide();
+        const $Panel = $DropDown.find('div[class^="newfilter-dropdown panel-"]');
+        // $Panel.hide();
         if ($Panel.find('div[class^="side-operation-"]').find('span[class^="clear-button-"]').length) {
           // console.log($Panel, $Panel.find('div[class^="clear-button-"]').length, $Panel.find('div[class^="clear-button-"]')[0])
           $Panel.find('div[class^="side-operation-"]').find('span[class^="clear-button-"]')[0].click();
@@ -994,13 +995,13 @@ dom.append(`<div sp style='  position: absolute;
         $Input[_key].memoizedProps.onChange({target: {value: personName}})
         _i2 = setInterval(() => {
           if ($Panel.find('div[class^="item-"]').length !== 1) return
-          $Panel.find('div[class^="item-"]')[0].click()
+          $Panel.find('div[class^="item-"]').click()
           clearInterval(_i2);
           setTimeout(() => {
             document.body.click()
           }, 80)
         }, 100)
-      }, 300)
+      }, 150)
     } catch (e) {
 
     }
