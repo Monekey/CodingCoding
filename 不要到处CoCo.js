@@ -1,10 +1,11 @@
 // ==UserScript==
 // @name         不要到处coco
 // @namespace    https://wydevops.coding.net/
-// @version      1.6.2
+// @version      1.7.0
 // @description  coding增强
-// @author       你
+// @author       simon
 // @match        https://wydevops.coding.net/*
+// @match        http://devops.ack.sunacwy.com.cn/*
 // @require      http://code.jquery.com/jquery-2.1.1.min.js
 // @require      https://cdn.staticfile.org/jquery-cookie/1.4.1/jquery.cookie.min.js
 // @require      http://code.jquery.com/ui/1.11.0/jquery-ui.min.js
@@ -159,7 +160,6 @@
   .ui-tabs ul.ui-tabs-nav {
     padding: 0em 0.2em 0.1em 0;
     background: #FFF5E6;
-    border: none;
   }
 
   .ui-tabs .ui-tabs-nav li.ui-state-default.ui-corner-top {
@@ -401,7 +401,7 @@
       }
       item.$hours = item.subTasks.reduce((prev, curr, r) => prev + (curr.workingHours || 0), 0);
       item.subTasks.forEach(task => {
-        const personName = task.assignee?.name ?? '未分配';
+        const personName = task.assignee?.name ?? '未指定';
         const person = personHoursMap[personName] = personHoursMap[personName] || {
           tasks: [], workingHours: 0, person: task.assignee
         };
@@ -490,10 +490,10 @@
         // `<div class="tag-OnRxknb07m epic-1Eg_rPGjj7"><div class="icon-24obWj6mLq"></div><div class="detail-hc4p8Zzxbo">【保洁】【保洁-0324】新增</div></div>`
         $(td).prepend(`<div sp class="spspspspsp tag-OnRxknb07m epic-1Eg_rPGjj7"><div class="icon-24obWj6mLq"></div><div class="detail-hc4p8Zzxbo">${`${item.$hours}`.slice(0, 5)}/<span style="color: #ffa200">${fiberMatch(item.$hours)}</span></div></div>`)
         /*$(td).append(`<div sp style='position: absolute; font-size: 12px;
-                      left: 32px;
-                      bottom: -2px;
-                      color: #222;
-                      font-weight: bold;'>${item.$hours}/<span style="color: #ffa200">${fiberMatch(item.$hours)}</span></div>`)*/
+              left: 32px;
+              bottom: -2px;
+              color: #222;
+              font-weight: bold;'>${item.$hours}/<span style="color: #ffa200">${fiberMatch(item.$hours)}</span></div>`)*/
       } catch (e) {
       }
       item.subTasks.forEach(sub => {
@@ -511,10 +511,10 @@
       })
       /*
 dom.append(`<div sp style='  position: absolute;
-                    left: auto;
-                    bottom: 0;
-                    color: #ffa200;
-                    font-weight: bold;'>${item.$hours}</div>`) */
+              left: auto;
+              bottom: 0;
+              color: #ffa200;
+              font-weight: bold;'>${item.$hours}</div>`) */
     });
   })
   let interval = null;
@@ -1008,5 +1008,26 @@ dom.append(`<div sp style='  position: absolute;
 
     }
   }
+
+  // 这里是kubesphere的生产环境标识
+  const i = setInterval(() => {
+    if (!document.querySelector('#root > div > div > a')) {
+      return;
+    }
+    clearInterval(i)
+    document.querySelector('#root > div > div > a').innerHTML += `<span style="
+  position: absolute;
+  left: calc(50% - -79px);
+  top: 6px;
+  font-size: 28px;
+  font-weight: bold;
+  color: #fff;
+  padding: 4px 10px;
+  background: red;
+  border-radius: 12px;
+">生产环境</span>`
+  }, 200)
+
+
 })();
 
