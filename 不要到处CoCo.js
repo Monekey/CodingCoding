@@ -1,16 +1,16 @@
 // ==UserScript==
 // @name         不要到处coco
 // @namespace    https://wydevops.coding.net/
-// @version      1.7.0
+// @version      1.7.2
 // @description  coding增强
-// @author       simon
+// @author       cuiqimeng
 // @match        https://wydevops.coding.net/*
 // @match        http://devops.ack.sunacwy.com.cn/*
 // @require      http://code.jquery.com/jquery-2.1.1.min.js
 // @require      https://cdn.staticfile.org/jquery-cookie/1.4.1/jquery.cookie.min.js
 // @require      http://code.jquery.com/ui/1.11.0/jquery-ui.min.js
 // @resource      https://code.jquery.com/ui/1.13.2/themes/base/jquery-ui.css
-// @icon         data:image/gif;base64,R0lGODlhAQABAAAAACH5BAEKAAEALAAAAAABAAEAAAICTAEAOw==
+// @icon         https://wydevops.coding.net/static/favicon.ico
 // @grant        none
 // @license MIT
 // ==/UserScript==
@@ -63,6 +63,28 @@
         return true
       } else {
         return false
+      }
+    },
+    formatStatus(str) {
+      switch (str) {
+        case '已完成':
+          return '✅'
+        case '未开始':
+          return ''
+        case '处理中':
+          return '♿️'
+        default:
+          return ''
+      }
+    },
+    formatPriority(priority) {
+      switch (priority) {
+        case 3:
+          return `🆘`
+        case 2:
+          return `🚩`
+        default:
+          return ''
       }
     }
   }
@@ -186,6 +208,17 @@
     padding-bottom: 16px;
     background: #FFF5E6;
   }
+  @keyframes liuquan {
+  0% {
+    background: red;
+  }
+  50% {
+    background: #a72929;
+  }
+  100% {
+    background: red;
+  }
+}
   `
   document.head.appendChild(style)
 
@@ -742,8 +775,11 @@ dom.append(`<div sp style='  position: absolute;
       store.story.forEach(item => {
         allSubTasks = [...allSubTasks, ...(item.subTasks.map(item1 => ({
           ...item1,
-          epic: item.epic || {code: 0, name: '无史诗'},
-          story: {code: item.code, name: item.name}
+          module: (item.module && item.module.id) ? item.module : {
+            id: 999999,
+            name: "未指定模块",
+          },
+          story: {code: item.code, name: item.name, priority: item.priority}
         })))]
       })
       console.log(allSubTasks);
@@ -765,47 +801,48 @@ dom.append(`<div sp style='  position: absolute;
           weekly_tasks.push(processingTasks.find(item => item.code === code))
         }
       }
-      const epicMap = {};
+      // const epicMap = {};
+      // weekly_tasks.forEach(item => {
+      //   epicMap[item.epic.code] = epicMap[item.epic.code] || [];
+      //   epicMap[item.epic.code].push(item)
+      // })
+      // const groupByEpic = Object.entries(epicMap).map(([epicCode, tasks]) => ({...tasks[0].epic, tasks}))
+      const moduleMap = {};
       weekly_tasks.forEach(item => {
-        epicMap[item.epic.code] = epicMap[item.epic.code] || [];
-        epicMap[item.epic.code].push(item)
+        moduleMap[item.module.id] = moduleMap[item.module.id] || [];
+        moduleMap[item.module.id].push(item)
       })
-      const groupByEpic = Object.entries(epicMap).map(([epicCode, tasks]) => ({...tasks[0].epic, tasks}))
-      console.log(groupByEpic)
+      const groupByModule = Object.entries(moduleMap).map(([id, tasks]) => ({...tasks[0].module, tasks}))
+      console.log(groupByModule)
       let text = ``;
-      for (let index in groupByEpic) {
-        const epic = groupByEpic[index];
-        if (epic.code) {
-          // 计算史诗进度 begin
-          const epicIssues = await fetchEpicIssues(epic.code);
-          const statData = {
-            total: 0,
-            curr: 0
-          }
-          for (const story of epicIssues) {
-            const ownerTasks = story.subTasks.filter(task => task.issueTypeDetail.name === '子工作项' && task.assignee?.id == userId);
-            console.log('ownerTasks:', ownerTasks)
-            for (const task of ownerTasks) {
-              const taskDetail = await fetchIssuesDetail(task.code);
-              statData.total += taskDetail.workingHours;
-              if (taskDetail.issueStatus.type === "COMPLETED") {
-                statData.curr += taskDetail.workingHours;
-              }
-              console.log(taskDetail, statData.curr, statData.total)
-            }
-          }
-          // 计算史诗进度 end
-          text += `<b style="font-weight: bold;">${Number(index) + 1}、
-<a href="https://wydevops.coding.net/p/${store.project.name}/epics/issues/${epic.code}/detail">史诗 ${epic.code}</a> ${epic.name}
- （${statData.curr} / ${statData.total}）${Utils.formatRate(statData.curr / statData.total)}</b>`
-        } else
-          text += `<b>${Number(index) + 1}、其他（无史诗）</b>`
+      for (let index in groupByModule) {
+        const module = groupByModule[index];
+        // 计算史诗进度 begin
+        // const epicIssues = await fetchEpicIssues(epic.code);
+        // const statData = {
+        //   total: 0,
+        //   curr: 0
+        // }
+        // for (const story of epicIssues) {
+        //   const ownerTasks = story.subTasks.filter(task => task.issueTypeDetail.name === '子工作项' && task.assignee?.id == userId);
+        //   console.log('ownerTasks:', ownerTasks)
+        //   for (const task of ownerTasks) {
+        //     const taskDetail = await fetchIssuesDetail(task.code);
+        //     statData.total += taskDetail.workingHours;
+        //     if (taskDetail.issueStatus.type === "COMPLETED") {
+        //       statData.curr += taskDetail.workingHours;
+        //     }
+        //     console.log(taskDetail, statData.curr, statData.total)
+        //   }
+        // }
+        // 计算史诗进度 end
+        text += `<b style="font-weight: bold;">${Number(index) + 1}、${module.name}</b>`
         text += `<ul>`
-        epic.tasks.forEach(task => {
+        module.tasks.forEach(task => {
           text += `<li>
                   <a href="https://wydevops.coding.net/p/${store.project.name}/requirements/issues/${task.story.code}/detail" title="${task.story.name}">故事 ${task.story.code}</a>
                    / <a href="https://wydevops.coding.net/p/${store.project.name}/requirements/issues/${task.story.code}/detail/subissues/${task.code}">任务 ${task.code}</a>
-                  ：${task.name}（${task.workingHours}） <span style="color: red">—— ${task.issueStatus.name}</span>
+                  ：${Utils.formatPriority(task.story.priority)}${task.name}（${task.workingHours}） <span style="color: red"> ${Utils.formatStatus(task.issueStatus.name)}</span>
                   </li>`
         });
         text += `</ul><br/>`;
@@ -1025,6 +1062,7 @@ dom.append(`<div sp style='  position: absolute;
   padding: 4px 10px;
   background: red;
   border-radius: 12px;
+  animation: liuquan 1.6s infinite;
 ">生产环境</span>`
   }, 200)
 
